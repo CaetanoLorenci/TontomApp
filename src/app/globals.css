@@ -1,26 +1,191 @@
 @import "tailwindcss";
 
+/* ════════════════════════════════════════════════════════════
+   TONTOM — design system
+   Conceito: sonar de conversas. Dark-first, sinal verde-menta,
+   números em mono tabular, profundidade por brilho (não sombra).
+   ════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* superfícies (escala de profundidade) */
+  --color-ink: #070b0a; /* fundo raiz */
+  --color-pane: #0c1311; /* cartões */
+  --color-pane2: #111a17; /* cartões elevados / hover */
+  --color-line: #1c2925; /* bordas */
+  --color-line2: #2a3b35; /* bordas em destaque */
+
+  /* texto */
+  --color-snow: #e9f2ee; /* principal */
+  --color-mist: #87998f; /* secundário */
+  --color-faint: #56665f; /* terciário */
+
+  /* sinal (marca) */
+  --color-signal: #2fe6a8; /* verde-menta Tontom */
+  --color-signal-soft: #173b30;
+
+  /* estágios do funil */
+  --color-st-novo: #8da3b0;
+  --color-st-qual: #4cc3ff;
+  --color-st-agen: #ffc24c;
+  --color-st-vend: #2fe6a8;
+  --color-st-perd: #ff6b6b;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ink);
+  color: var(--color-snow);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* números sempre tabulares (alinham em colunas) */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ── atmosfera: brilho radial + malha de fundo ── */
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% -10%, rgba(47, 230, 168, 0.08), transparent 60%),
+    radial-gradient(ellipse 40% 30% at 85% 110%, rgba(76, 195, 255, 0.04), transparent 60%);
+}
+.atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(135, 153, 143, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(135, 153, 143, 0.04) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black, transparent 75%);
+}
+
+/* ── animações ── */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.anim-up {
+  animation: fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.anim-grow {
+  transform-origin: left;
+  animation: grow-x 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes draw-line {
+  from {
+    stroke-dashoffset: var(--dash, 1200);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.anim-draw {
+  stroke-dasharray: var(--dash, 1200);
+  animation: draw-line 1.4s cubic-bezier(0.45, 0, 0.2, 1) 0.2s both;
+}
+
+@keyframes area-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-area {
+  animation: area-reveal 0.8s ease-out 0.9s both;
+}
+
+/* pulso do sonar (logo + status vivo) */
+@keyframes sonar {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.55);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+.sonar-ring {
+  animation: sonar 2.6s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+.sonar-ring-2 {
+  animation: sonar 2.6s cubic-bezier(0.2, 0.6, 0.4, 1) 0.9s infinite;
+}
+
+@keyframes blink-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.live-dot {
+  animation: blink-dot 2.2s ease-in-out infinite;
+}
+
+/* hover de cartão: borda acende, leve lift */
+.card {
+  background: var(--color-pane);
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  transition:
+    border-color 0.25s ease,
+    background 0.25s ease,
+    transform 0.25s ease;
+}
+.card:hover {
+  border-color: var(--color-line2);
+  background: var(--color-pane2);
+}
+
+/* respeita quem desliga animação */
+@media (prefers-reduced-motion: reduce) {
+  .anim-up,
+  .anim-grow,
+  .anim-draw,
+  .anim-area,
+  .sonar-ring,
+  .sonar-ring-2,
+  .live-dot {
+    animation: none;
+    stroke-dasharray: none;
+  }
 }
