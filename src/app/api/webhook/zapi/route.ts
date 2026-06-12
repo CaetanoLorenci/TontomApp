@@ -27,6 +27,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, ignored: "invalid json" });
   }
 
+  // recibo de entrega/status NÃO é mensagem (vem sem texto) — só o ReceivedCallback interessa
+  if (body.type && body.type !== "ReceivedCallback") {
+    return NextResponse.json({ ok: true, ignored: body.type });
+  }
+
   const phone = body.phone?.replace(/\D/g, "");
   if (!phone) return NextResponse.json({ ok: true, ignored: "no phone" });
 
@@ -208,6 +213,7 @@ function extractText(b: ZapiMessage): string | null {
 
 // Shape parcial do payload do Z-API (só o que usamos).
 type ZapiMessage = {
+  type?: string; // ReceivedCallback | DeliveryCallback | MessageStatusCallback ...
   phone?: string;
   messageId?: string;
   senderName?: string;
