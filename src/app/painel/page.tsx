@@ -499,6 +499,11 @@ export default async function Painel({
                                   ≈ janela
                                 </span>
                               )}
+                              {l.attributed_via === "ctwa" && (
+                                <span className="ml-1.5 font-semibold text-signal" title="atribuição nativa do anúncio de WhatsApp (ctwa_clid)">
+                                  nativo
+                                </span>
+                              )}
                             </div>
                             {capi.length > 0 && (
                               <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-signal-soft px-2 py-0.5 font-semibold text-signal">

@@ -27,7 +27,7 @@ export async function advanceStage(
 
   const { data: lead } = await sb
     .from("leads")
-    .select("id, phone, stage, value, clicks(fbc)")
+    .select("id, phone, stage, value, clicks(fbc, ctwa_clid)")
     .eq("id", leadId)
     .maybeSingle();
   if (!lead) return { ok: false, error: "lead não encontrado" };
@@ -63,20 +63,23 @@ export async function advanceStage(
     .maybeSingle();
   if (already) return { ok: true, advanced: true, capiSent: false };
 
-  const fbc = (lead.clicks as { fbc?: string | null } | null)?.fbc ?? null;
+  const click = lead.clicks as { fbc?: string | null; ctwa_clid?: string | null } | null;
+  const fbc = click?.fbc ?? null;
+  const ctwaClid = click?.ctwa_clid ?? null;
   try {
     const result = await sendCapiEvent({
       eventName,
       eventId,
       phone: lead.phone,
       fbc,
+      ctwaClid,
       value: eventName === "Purchase" ? (value ?? lead.value) : null,
     });
     await sb.from("capi_events").insert({
       lead_id: leadId,
       event_name: eventName,
       event_id: eventId,
-      payload: { stage, value: value ?? lead.value, fbc, source: opts.source },
+      payload: { stage, value: value ?? lead.value, fbc, ctwa_clid: ctwaClid, source: opts.source },
       response: result.body as object,
     });
     return { ok: true, advanced: true, capiSent: result.ok };

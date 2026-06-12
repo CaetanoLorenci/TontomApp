@@ -10,6 +10,7 @@ create table if not exists public.clicks (
   code        text not null unique,           -- código TT-XXXXXX que vai na mensagem do WhatsApp
   fbclid      text,                            -- vindo da URL do anúncio (Meta cola)
   fbc         text,                            -- fb.1.<ts>.<fbclid> — pronto pro CAPI
+  ctwa_clid   text,                            -- atribuição NATIVA de anúncio de WhatsApp (via externalAdReply do Z-API)
   utm_source  text,
   utm_medium  text,
   utm_campaign text,
@@ -38,6 +39,7 @@ create table if not exists public.leads (
   first_message text,
   stage         text not null default 'novo',  -- novo | qualificado | agendado | vendido | perdido
   value         numeric(12,2),                 -- faturamento da venda (quando vendido)
+  attributed_via text check (attributed_via in ('codigo','janela','ctwa')), -- como foi atribuído
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );

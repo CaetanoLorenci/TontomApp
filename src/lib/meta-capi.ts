@@ -15,6 +15,7 @@ export type CapiInput = {
   eventId: string; // dedup — mesmo evento não conta 2x
   phone: string; // só dígitos, com DDI
   fbc?: string | null;
+  ctwaClid?: string | null; // anúncio nativo de WhatsApp → evento business_messaging
   value?: number | null;
   currency?: string;
 };
@@ -28,17 +29,23 @@ export async function sendCapiEvent(input: CapiInput): Promise<CapiResult> {
     throw new Error("Faltando META_PIXEL_ID ou META_CAPI_TOKEN no ambiente.");
   }
 
+  // CTWA nativo: evento de mensageria (ctwa_clid). Senão: evento de site (fbc do clique).
+  const isCtwa = !!input.ctwaClid;
   const payload = {
     data: [
       {
         event_name: input.eventName,
         event_time: Math.floor(Date.now() / 1000),
-        action_source: "website",
+        action_source: isCtwa ? "business_messaging" : "website",
+        ...(isCtwa ? { messaging_channel: "whatsapp" } : {}),
         event_id: input.eventId,
-        event_source_url: process.env.APP_BASE_URL ?? undefined,
+        ...(isCtwa ? {} : { event_source_url: process.env.APP_BASE_URL ?? undefined }),
         user_data: {
           ph: [sha256(input.phone.replace(/\D/g, ""))],
-          ...(input.fbc ? { fbc: input.fbc } : {}),
+          ...(isCtwa ? { ctwa_clid: input.ctwaClid } : {}),
+          // business_messaging exige a identidade da Página dona dos anúncios
+          ...(isCtwa && process.env.META_PAGE_ID ? { page_id: process.env.META_PAGE_ID } : {}),
+          ...(!isCtwa && input.fbc ? { fbc: input.fbc } : {}),
         },
         ...(input.value != null
           ? { custom_data: { value: input.value, currency: input.currency ?? "BRL" } }

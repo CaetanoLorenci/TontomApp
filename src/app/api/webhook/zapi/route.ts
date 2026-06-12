@@ -64,10 +64,13 @@ async function handleIncoming(sb: SB, phone: string, message: string | null, bod
   let leadId = existing?.id ?? null;
 
   if (existing) {
-    // Lead voltou pelo anúncio (mensagem-template ou código novo)? Re-atribui (last-touch):
-    // a campanha mais recente que trouxe ele de volta leva o crédito.
-    let click = code ? await findClick(sb, code) : null;
-    let via: "codigo" | "janela" | null = click ? "codigo" : null;
+    // Lead voltou por anúncio? Re-atribui (last-touch). Prioridade: CTWA nativo > código > janela.
+    let click = await resolveCtwaClick(sb, body);
+    let via: "ctwa" | "codigo" | "janela" | null = click ? "ctwa" : null;
+    if (!click && code) {
+      click = await findClick(sb, code);
+      if (click) via = "codigo";
+    }
     if (!click && isTemplateMessage(message)) {
       click = await findOrphanClickInWindow(sb);
       if (click) via = "janela";
@@ -84,10 +87,16 @@ async function handleIncoming(sb: SB, phone: string, message: string | null, bod
         .eq("id", existing.id);
     }
   } else {
-    // 1º: código exato (zero-width que sobreviveu, ex: desktop); 2º: janela de tempo —
-    // mas SÓ se a mensagem for a do anúncio (template), pra orgânico não roubar clique.
-    let click = code ? await findClick(sb, code) : null;
-    let via: "codigo" | "janela" | null = click ? "codigo" : null;
+    // Prioridade de atribuição:
+    // 1º CTWA nativo (externalAdReply do anúncio de WhatsApp — exato, sem redirect)
+    // 2º código exato (zero-width que sobreviveu, ex: desktop)
+    // 3º janela de tempo — SÓ se a mensagem for a do anúncio (orgânico não rouba clique)
+    let click = await resolveCtwaClick(sb, body);
+    let via: "ctwa" | "codigo" | "janela" | null = click ? "ctwa" : null;
+    if (!click && code) {
+      click = await findClick(sb, code);
+      if (click) via = "codigo";
+    }
     if (!click && isTemplateMessage(message)) {
       click = await findOrphanClickInWindow(sb);
       if (click) via = "janela";
@@ -173,6 +182,45 @@ async function findClick(sb: SB, code: string): Promise<{ id: string; code: stri
   return data ?? null;
 }
 
+// ── CTWA nativo: mensagem veio de anúncio de WhatsApp? ──
+// O Z-API entrega externalAdReply {ctwaClid, sourceId, title...} na 1ª mensagem.
+// Criamos um "click" sintético com o ctwa_clid → atribuição exata, e o CAPI
+// devolve o evento como business_messaging (otimização nativa do Meta).
+async function resolveCtwaClick(sb: SB, body: ZapiMessage): Promise<{ id: string; code: string } | null> {
+  const ad =
+    body.externalAdReply ??
+    body.text?.externalAdReply ??
+    body.message?.externalAdReply ??
+    null;
+  if (!ad?.ctwaClid) return null;
+
+  // 1 click por ctwaClid (retry de webhook não duplica)
+  const { data: existing } = await sb
+    .from("clicks")
+    .select("id, code")
+    .eq("ctwa_clid", ad.ctwaClid)
+    .maybeSingle();
+  if (existing) return existing;
+
+  const { data: created, error } = await sb
+    .from("clicks")
+    .insert({
+      code: `CT-${ad.ctwaClid.slice(-8).toUpperCase()}`,
+      ctwa_clid: ad.ctwaClid,
+      ad_id: ad.sourceId ?? null,
+      utm_source: "ctwa",
+      utm_campaign: ad.title ?? `anúncio ${ad.sourceId ?? ""}`.trim(),
+      utm_content: ad.body ?? null,
+    })
+    .select("id, code")
+    .single();
+  if (error) {
+    console.error("[webhook] falha ao criar click ctwa:", error.message);
+    return null;
+  }
+  return created;
+}
+
 // A mensagem recebida é a pré-preenchida do anúncio? (ignora invisíveis e espaços)
 function isTemplateMessage(message: string | null): boolean {
   if (!message) return false;
@@ -212,6 +260,15 @@ function extractText(b: ZapiMessage): string | null {
 }
 
 // Shape parcial do payload do Z-API (só o que usamos).
+type ExternalAdReply = {
+  ctwaClid?: string;
+  sourceId?: string;
+  sourceUrl?: string;
+  sourceType?: string;
+  title?: string;
+  body?: string;
+};
+
 type ZapiMessage = {
   type?: string; // ReceivedCallback | DeliveryCallback | MessageStatusCallback ...
   phone?: string;
@@ -219,7 +276,9 @@ type ZapiMessage = {
   senderName?: string;
   chatName?: string;
   fromMe?: boolean;
-  text?: { message?: string };
+  externalAdReply?: ExternalAdReply;
+  text?: { message?: string; externalAdReply?: ExternalAdReply };
+  message?: { externalAdReply?: ExternalAdReply };
   image?: { caption?: string };
   video?: { caption?: string };
   document?: { caption?: string };
