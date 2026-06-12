@@ -32,6 +32,7 @@ type LeadRow = {
   stage: string;
   value: number | null;
   code: string | null;
+  attributed_via: string | null;
   created_at: string;
   clicks: {
     utm_source: string | null;
@@ -187,7 +188,7 @@ export default async function Painel({
   let leadsQuery = sb
     .from("leads")
     .select(
-      "id, phone, name, first_message, stage, value, code, created_at, clicks(utm_source, utm_campaign, utm_content, fbclid)",
+      "id, phone, name, first_message, stage, value, code, attributed_via, created_at, clicks(utm_source, utm_campaign, utm_content, fbclid)",
     )
     .order("created_at", { ascending: false });
   if (since) leadsQuery = leadsQuery.gte("created_at", since.toISOString());
@@ -493,6 +494,11 @@ export default async function Painel({
                             </div>
                             <div className="num mt-0.5 text-faint">
                               {[l.clicks.utm_source, l.code].filter(Boolean).join(" · ")}
+                              {l.attributed_via === "janela" && (
+                                <span className="ml-1.5 text-st-agen" title="atribuído por janela de tempo (sem código na mensagem)">
+                                  ≈ janela
+                                </span>
+                              )}
                             </div>
                             {capi.length > 0 && (
                               <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-signal-soft px-2 py-0.5 font-semibold text-signal">

@@ -64,20 +64,32 @@ async function handleIncoming(sb: SB, phone: string, message: string | null, bod
       if (click) {
         await sb
           .from("leads")
-          .update({ click_id: click.id, code, updated_at: new Date().toISOString() })
+          .update({
+            click_id: click.id,
+            code,
+            attributed_via: "codigo",
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", existing.id);
       }
     }
   } else {
-    const click = code ? await findClick(sb, code) : null;
+    // 1º: código exato; 2º (fallback): janela de tempo — último clique órfão recente
+    let click = code ? await findClick(sb, code) : null;
+    let via: "codigo" | "janela" | null = click ? "codigo" : null;
+    if (!click) {
+      click = await findOrphanClickInWindow(sb);
+      if (click) via = "janela";
+    }
     const { data: created, error } = await sb
       .from("leads")
       .insert({
         phone,
         name: body.senderName ?? body.chatName ?? null,
         first_message: message,
-        code: click ? code : null,
+        code: click?.code ?? null,
         click_id: click?.id ?? null,
+        attributed_via: via,
         stage: "novo",
       })
       .select("id")
@@ -145,9 +157,28 @@ async function saveMessage(
   }
 }
 
-async function findClick(sb: SB, code: string): Promise<{ id: string } | null> {
-  const { data } = await sb.from("clicks").select("id").eq("code", code).maybeSingle();
+async function findClick(sb: SB, code: string): Promise<{ id: string; code: string } | null> {
+  const { data } = await sb.from("clicks").select("id, code").eq("code", code).maybeSingle();
   return data ?? null;
+}
+
+// Fallback de atribuição por JANELA DE TEMPO: o clique mais recente (até 10 min)
+// que ainda não foi casado com nenhum lead. Funciona bem em volume baixo;
+// pode errar se 2 leads clicam quase juntos — por isso fica marcado 'janela'.
+const ATTRIBUTION_WINDOW_MIN = 10;
+
+async function findOrphanClickInWindow(sb: SB): Promise<{ id: string; code: string } | null> {
+  const cutoff = new Date(Date.now() - ATTRIBUTION_WINDOW_MIN * 60_000).toISOString();
+  const { data: clicks } = await sb
+    .from("clicks")
+    .select("id, code, leads(id)")
+    .gte("created_at", cutoff)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const orphan = (clicks ?? []).find(
+    (c) => !c.leads || (Array.isArray(c.leads) && c.leads.length === 0),
+  );
+  return orphan ? { id: orphan.id, code: orphan.code } : null;
 }
 
 // Z-API manda o conteúdo em campos diferentes por tipo de mensagem.
