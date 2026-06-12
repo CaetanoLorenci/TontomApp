@@ -52,9 +52,14 @@ function decodeInvisible(text: string): string | null {
   return `TT-${out}`;
 }
 
-// Extrai o código do texto: primeiro tenta o invisível, depois o visível (fallback).
+// Extrai o código do texto. Reconhece, nesta ordem:
+// 1. "Protocolo: XXXXXX" (formato atual da mensagem)
+// 2. invisível zero-width (sobrevive no WhatsApp desktop/web)
+// 3. "TT-XXXXXX" visível (formato antigo)
 export function extractCode(text: string | null | undefined): string | null {
   if (!text) return null;
+  const proto = text.toUpperCase().match(/PROTOCOLO[:\s]+([23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6})/);
+  if (proto) return `TT-${proto[1]}`;
   const invisible = decodeInvisible(text);
   if (invisible) return invisible;
   const m = text.toUpperCase().match(/TT-\s*([23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6})/);
