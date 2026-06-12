@@ -59,20 +59,24 @@ async function handleIncoming(sb: SB, phone: string, message: string | null, bod
   let leadId = existing?.id ?? null;
 
   if (existing) {
-    // atribuição tardia: ainda sem origem e agora veio código
-    if (!existing.click_id && code) {
-      const click = await findClick(sb, code);
-      if (click) {
-        await sb
-          .from("leads")
-          .update({
-            click_id: click.id,
-            code,
-            attributed_via: "codigo",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
-      }
+    // Lead voltou pelo anúncio (mensagem-template ou código novo)? Re-atribui (last-touch):
+    // a campanha mais recente que trouxe ele de volta leva o crédito.
+    let click = code ? await findClick(sb, code) : null;
+    let via: "codigo" | "janela" | null = click ? "codigo" : null;
+    if (!click && isTemplateMessage(message)) {
+      click = await findOrphanClickInWindow(sb);
+      if (click) via = "janela";
+    }
+    if (click && click.id !== existing.click_id) {
+      await sb
+        .from("leads")
+        .update({
+          click_id: click.id,
+          code: click.code,
+          attributed_via: via,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
     }
   } else {
     // 1º: código exato (zero-width que sobreviveu, ex: desktop); 2º: janela de tempo —
