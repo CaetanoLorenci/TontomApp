@@ -469,7 +469,9 @@ export default async function Painel({
                             className="h-2 w-2 rounded-full"
                             style={{ background: meta.color, boxShadow: `0 0 8px ${meta.color}` }}
                           />
-                          <span className="font-semibold">{l.name ?? "Sem nome"}</span>
+                          <Link href={`/painel/lead/${l.id}`} className="font-semibold transition-colors hover:text-signal">
+                            {l.name ?? "Sem nome"}
+                          </Link>
                           <span
                             className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
                             style={{ color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }}
@@ -526,6 +528,15 @@ export default async function Painel({
                         {l.first_message}
                       </p>
                     )}
+
+                    <Link
+                      href={`/painel/lead/${l.id}`}
+                      className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-mist transition-colors hover:text-signal"
+                    >
+                      <IconChat size={13} />
+                      Abrir conversa
+                      <IconAdvance size={12} />
+                    </Link>
 
                     {NEXT_ACTIONS[l.stage]?.length > 0 && (
                       <form action={updateLead} className="mt-3 flex flex-wrap items-center gap-2">

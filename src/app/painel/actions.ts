@@ -18,4 +18,5 @@ export async function updateLead(formData: FormData) {
   });
 
   revalidatePath("/painel");
+  revalidatePath(`/painel/lead/${leadId}`);
 }
