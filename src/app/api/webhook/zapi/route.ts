@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { extractCode } from "@/lib/code";
+import { extractCode, stripInvisible } from "@/lib/code";
 import { advanceStage, extractValue } from "@/lib/conversion";
+import { DEFAULT_TEMPLATE } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,10 +75,11 @@ async function handleIncoming(sb: SB, phone: string, message: string | null, bod
       }
     }
   } else {
-    // 1º: código exato; 2º (fallback): janela de tempo — último clique órfão recente
+    // 1º: código exato (zero-width que sobreviveu, ex: desktop); 2º: janela de tempo —
+    // mas SÓ se a mensagem for a do anúncio (template), pra orgânico não roubar clique.
     let click = code ? await findClick(sb, code) : null;
     let via: "codigo" | "janela" | null = click ? "codigo" : null;
-    if (!click) {
+    if (!click && isTemplateMessage(message)) {
       click = await findOrphanClickInWindow(sb);
       if (click) via = "janela";
     }
@@ -160,6 +162,12 @@ async function saveMessage(
 async function findClick(sb: SB, code: string): Promise<{ id: string; code: string } | null> {
   const { data } = await sb.from("clicks").select("id, code").eq("code", code).maybeSingle();
   return data ?? null;
+}
+
+// A mensagem recebida é a pré-preenchida do anúncio? (ignora invisíveis e espaços)
+function isTemplateMessage(message: string | null): boolean {
+  if (!message) return false;
+  return stripInvisible(message).trim() === DEFAULT_TEMPLATE.trim();
 }
 
 // Fallback de atribuição por JANELA DE TEMPO: o clique mais recente (até 10 min)
