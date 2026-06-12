@@ -32,6 +32,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, ignored: body.type });
   }
 
+  // grupo/broadcast/newsletter não é lead — sem isso, mensagem de grupo viraria lead fantasma
+  if (body.isGroup || body.isNewsletter || body.broadcast) {
+    return NextResponse.json({ ok: true, ignored: "group/broadcast" });
+  }
+
   const phone = body.phone?.replace(/\D/g, "");
   if (!phone) return NextResponse.json({ ok: true, ignored: "no phone" });
 
@@ -276,6 +281,9 @@ type ZapiMessage = {
   senderName?: string;
   chatName?: string;
   fromMe?: boolean;
+  isGroup?: boolean;
+  isNewsletter?: boolean;
+  broadcast?: boolean;
   externalAdReply?: ExternalAdReply;
   text?: { message?: string; externalAdReply?: ExternalAdReply };
   message?: { externalAdReply?: ExternalAdReply };
