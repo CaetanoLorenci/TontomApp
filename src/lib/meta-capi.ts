@@ -11,7 +11,9 @@ function sha256(value: string): string {
 }
 
 export type CapiInput = {
-  eventName: "Lead" | "Schedule" | "Purchase";
+  // nome JÁ no vocabulário do canal certo (ver eventForStage):
+  // site = Lead/Schedule/Purchase · mensageria = LeadSubmitted/Purchase
+  eventName: string;
   eventId: string; // dedup — mesmo evento não conta 2x
   phone: string; // só dígitos, com DDI
   fbc?: string | null;
@@ -67,10 +69,23 @@ export async function sendCapiEvent(input: CapiInput): Promise<CapiResult> {
   return { ok: res.ok, status: res.status, body };
 }
 
-// Estágio do funil -> evento que mandamos pro Meta.
-export function eventForStage(
-  stage: string,
-): CapiInput["eventName"] | null {
+// Estágio do funil -> evento que mandamos pro Meta, JÁ no vocabulário do canal.
+// Os dois canais têm taxonomias diferentes (confirmado contra a API do Meta):
+//  - SITE (link /r, fbc): eventos padrão Lead / Schedule / Purchase
+//  - MENSAGERIA (CTWA, ctwa_clid): só LeadSubmitted e Purchase existem — NÃO há Schedule.
+// Objetivo do Caetano = call agendada → no CTWA isso é o LeadSubmitted (a conversão
+// que a campanha otimiza); a venda fecha depois como Purchase (com valor, p/ ROI).
+export function eventForStage(stage: string, isCtwa: boolean): string | null {
+  if (isCtwa) {
+    switch (stage) {
+      case "agendado":
+        return "LeadSubmitted"; // ⭐ conversão-objetivo da mensageria
+      case "vendido":
+        return "Purchase";
+      default:
+        return null; // qualificado não dispara no CTWA (evita LeadSubmitted duplicado)
+    }
+  }
   switch (stage) {
     case "qualificado":
       return "Lead";

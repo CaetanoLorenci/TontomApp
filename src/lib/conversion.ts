@@ -51,7 +51,12 @@ export async function advanceStage(
     })
     .eq("id", leadId);
 
-  const eventName = eventForStage(stage);
+  const click = lead.clicks as { fbc?: string | null; ctwa_clid?: string | null } | null;
+  const fbc = click?.fbc ?? null;
+  const ctwaClid = click?.ctwa_clid ?? null;
+
+  // canal define a taxonomia do evento (mensageria != site)
+  const eventName = eventForStage(stage, !!ctwaClid);
   if (!eventName || !lead.phone) return { ok: true, advanced: true, capiSent: false };
 
   // idempotência: 1 evento por lead+estágio (Meta também dedupa pelo event_id)
@@ -62,10 +67,6 @@ export async function advanceStage(
     .eq("event_id", eventId)
     .maybeSingle();
   if (already) return { ok: true, advanced: true, capiSent: false };
-
-  const click = lead.clicks as { fbc?: string | null; ctwa_clid?: string | null } | null;
-  const fbc = click?.fbc ?? null;
-  const ctwaClid = click?.ctwa_clid ?? null;
   try {
     const result = await sendCapiEvent({
       eventName,
