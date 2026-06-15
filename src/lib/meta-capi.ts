@@ -25,14 +25,18 @@ export type CapiInput = {
 export type CapiResult = { ok: boolean; status: number; body: unknown };
 
 export async function sendCapiEvent(input: CapiInput): Promise<CapiResult> {
-  const pixelId = process.env.META_PIXEL_ID;
   const token = process.env.META_CAPI_TOKEN;
-  if (!pixelId || !token) {
-    throw new Error("Faltando META_PIXEL_ID ou META_CAPI_TOKEN no ambiente.");
-  }
-
   // CTWA nativo: evento de mensageria (ctwa_clid). Senão: evento de site (fbc do clique).
   const isCtwa = !!input.ctwaClid;
+  // CTWA precisa de um DATASET ligado à Página (o pixel de site não serve). Quando o
+  // Caetano achar/criar esse dataset, é só setar META_CTWA_DATASET_ID — sem deploy de código.
+  const datasetId =
+    isCtwa && process.env.META_CTWA_DATASET_ID
+      ? process.env.META_CTWA_DATASET_ID
+      : process.env.META_PIXEL_ID;
+  if (!datasetId || !token) {
+    throw new Error("Faltando META_PIXEL_ID/META_CTWA_DATASET_ID ou META_CAPI_TOKEN no ambiente.");
+  }
   const payload = {
     data: [
       {
@@ -59,7 +63,7 @@ export async function sendCapiEvent(input: CapiInput): Promise<CapiResult> {
       : {}),
   };
 
-  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${pixelId}/events?access_token=${token}`;
+  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${datasetId}/events?access_token=${token}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
