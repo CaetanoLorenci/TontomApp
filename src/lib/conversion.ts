@@ -27,7 +27,7 @@ export async function advanceStage(
 
   const { data: lead } = await sb
     .from("leads")
-    .select("id, phone, stage, value, clicks(fbc, ctwa_clid)")
+    .select("id, phone, stage, value, clicks(fbc, fbclid, ctwa_clid, created_at)")
     .eq("id", leadId)
     .maybeSingle();
   if (!lead) return { ok: false, error: "lead não encontrado" };
@@ -51,9 +51,16 @@ export async function advanceStage(
     })
     .eq("id", leadId);
 
-  const click = lead.clicks as { fbc?: string | null; ctwa_clid?: string | null } | null;
-  const fbc = click?.fbc ?? null;
+  const click = lead.clicks as
+    | { fbc?: string | null; fbclid?: string | null; ctwa_clid?: string | null; created_at?: string | null }
+    | null;
   const ctwaClid = click?.ctwa_clid ?? null;
+  // fbc: usa o salvo (compat) ou monta do fbclid + horário do clique
+  const fbc =
+    click?.fbc ??
+    (click?.fbclid
+      ? `fb.1.${new Date(click.created_at ?? Date.now()).getTime()}.${click.fbclid}`
+      : null);
 
   // canal define a taxonomia do evento (mensageria != site)
   const eventName = eventForStage(stage, !!ctwaClid);
