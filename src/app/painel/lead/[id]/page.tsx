@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { stripInvisible } from "@/lib/code";
 import { brl, formatPhone, formatWhen, formatDay, STAGE_META, NEXT_ACTIONS } from "@/lib/format";
-import { updateLead } from "../../actions";
-import { IconBroadcast, IconMetaOk, IconWarn, IconAdvance, IconSale, IconPhone, LogoMark } from "@/components/icons";
+import { updateLead, replyToLead } from "../../actions";
+import { IconBroadcast, IconMetaOk, IconWarn, IconAdvance, IconSale, IconPhone, IconChat, LogoMark } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -173,9 +173,32 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
           )}
         </section>
 
+        {/* responder pelo WhatsApp oficial (Cloud API) */}
+        <section className="anim-up mt-4" style={{ animationDelay: "160ms" }}>
+          <form action={replyToLead} className="flex items-center gap-2">
+            <input type="hidden" name="leadId" value={lead.id} />
+            <input
+              name="text"
+              autoComplete="off"
+              placeholder="Responder pelo WhatsApp…"
+              className="flex-1 rounded-2xl border border-line bg-pane px-4 py-3 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="flex items-center gap-1.5 rounded-2xl bg-signal px-4 py-3 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]"
+            >
+              <IconChat size={16} />
+              Enviar
+            </button>
+          </form>
+          <p className="mt-1.5 px-1 text-[10px] text-faint">
+            Envia pelo WhatsApp oficial. Funciona na janela de 24h após a última mensagem do lead.
+          </p>
+        </section>
+
         {/* ações de estágio */}
         {NEXT_ACTIONS[lead.stage]?.length > 0 && (
-          <section className="card anim-up sticky bottom-4 mt-6 p-4" style={{ animationDelay: "200ms" }}>
+          <section className="card anim-up sticky bottom-4 mt-4 p-4" style={{ animationDelay: "200ms" }}>
             <form action={updateLead} className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="leadId" value={lead.id} />
               <span className="mr-1 text-[11px] font-semibold uppercase tracking-widest text-faint">Mover pra</span>
