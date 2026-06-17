@@ -116,7 +116,8 @@ async function handleIncoming(sb: SB, m: CloudMessage, name: string | null) {
     leadId = created.id;
   }
 
-  await saveMessage(sb, leadId, phone, "in", text, m.id);
+  // raw debug: guarda o objeto cru da mensagem (inclui referral) p/ inspeção
+  await saveMessage(sb, leadId, phone, "in", text, m.id, m as unknown as Record<string, unknown>);
 }
 
 /* ── mensagem do TIME (echo da coexistência): salva + roda gatilhos ── */
@@ -177,10 +178,11 @@ async function saveMessage(
   direction: "in" | "out",
   content: string | null,
   wamid: string,
+  raw?: Record<string, unknown>,
 ) {
   const { error } = await sb
     .from("messages")
-    .insert({ lead_id: leadId, phone, direction, content, zapi_message_id: wamid });
+    .insert({ lead_id: leadId, phone, direction, content, zapi_message_id: wamid, raw: raw ?? null });
   if (error && !error.message.includes("duplicate")) {
     console.error("[cloud-webhook] falha ao salvar mensagem:", error.message);
   }
