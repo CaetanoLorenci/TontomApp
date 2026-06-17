@@ -14,13 +14,16 @@ export default function Home() {
           <LogoMark size={64} className="anim-up" />
         </div>
 
-        <h1 className="anim-up mt-6 text-5xl font-bold tracking-tighter" style={{ animationDelay: "120ms" }}>
+        <h1 className="anim-up mt-6 text-6xl font-black tracking-tighter" style={{ animationDelay: "120ms" }}>
           tontom<span className="text-signal">.</span>
         </h1>
+        <p className="anim-up mt-1 text-xs font-bold uppercase tracking-[0.3em] text-faint" style={{ animationDelay: "160ms" }}>
+          por Amplia
+        </p>
 
-        <p className="anim-up mt-4 max-w-md text-balance text-lg text-mist" style={{ animationDelay: "240ms" }}>
-          Sonar de conversas: rastreia cada lead do WhatsApp até o anúncio que o trouxe — e devolve a venda pro Meta
-          otimizar por <span className="font-semibold text-snow">qualidade</span>.
+        <p className="anim-up mt-5 max-w-md text-balance text-lg text-mist" style={{ animationDelay: "240ms" }}>
+          Rastreia cada lead do WhatsApp até o anúncio que o trouxe — e devolve a venda pro Meta otimizar por{" "}
+          <span className="font-semibold text-snow">quem compra</span>.
         </p>
 
         <div

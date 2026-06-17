@@ -1,36 +1,38 @@
 @import "tailwindcss";
 
 /* ════════════════════════════════════════════════════════════
-   TONTOM — design system
-   Conceito: sonar de conversas. Dark-first, sinal verde-menta,
-   números em mono tabular, profundidade por brilho (não sombra).
+   TONTOM — design system · identidade AMPLIA
+   Laranja #fc4900 on preto. Montserrat (títulos) + Inter (corpo).
+   Dark agressivo, alto contraste, corporativo, anti-trend.
    ════════════════════════════════════════════════════════════ */
 
 @theme {
-  /* superfícies (escala de profundidade) */
-  --color-ink: #070b0a; /* fundo raiz */
-  --color-pane: #0c1311; /* cartões */
-  --color-pane2: #111a17; /* cartões elevados / hover */
-  --color-line: #1c2925; /* bordas */
-  --color-line2: #2a3b35; /* bordas em destaque */
+  /* superfícies (escala de profundidade) — preto Amplia */
+  --color-ink: #000000; /* fundo raiz */
+  --color-pane: #0f0f0f; /* cartões */
+  --color-pane2: #181818; /* cartões elevados / hover */
+  --color-line: #222222; /* bordas */
+  --color-line2: #333333; /* bordas em destaque */
 
   /* texto */
-  --color-snow: #e9f2ee; /* principal */
-  --color-mist: #87998f; /* secundário */
-  --color-faint: #56665f; /* terciário */
+  --color-snow: #ffffff; /* principal */
+  --color-mist: #b0b0b0; /* secundário (~white 70%) */
+  --color-faint: #6e6e6e; /* terciário (~white 40%) */
 
-  /* sinal (marca) */
-  --color-signal: #2fe6a8; /* verde-menta Tontom */
-  --color-signal-soft: #173b30;
+  /* sinal (marca) — laranja Amplia */
+  --color-signal: #fc4900;
+  --color-signal-2: #d93d00; /* hover */
+  --color-signal-soft: #2a0d00; /* fundo de badge laranja */
 
-  /* estágios do funil */
-  --color-st-novo: #8da3b0;
-  --color-st-qual: #4cc3ff;
-  --color-st-agen: #ffc24c;
-  --color-st-vend: #2fe6a8;
-  --color-st-perd: #ff6b6b;
+  /* estágios do funil (funcional, distinto pra leitura) */
+  --color-st-novo: #9a9a9a;
+  --color-st-qual: #4c9eff;
+  --color-st-agen: #ffb020;
+  --color-st-vend: #25d366; /* verde "vendido" (sucesso) */
+  --color-st-perd: #ff5252;
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui;
+  --font-head: var(--font-montserrat), var(--font-inter), ui-sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
@@ -43,6 +45,14 @@ body {
   color: var(--color-snow);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* títulos em Montserrat (identidade Amplia) */
+h1,
+h2,
+h3 {
+  font-family: var(--font-head);
+  letter-spacing: -0.01em;
 }
 
 /* números sempre tabulares (alinham em colunas) */
@@ -59,16 +69,16 @@ body {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 70% 40% at 50% -10%, rgba(47, 230, 168, 0.08), transparent 60%),
-    radial-gradient(ellipse 40% 30% at 85% 110%, rgba(76, 195, 255, 0.04), transparent 60%);
+    radial-gradient(ellipse 70% 40% at 50% -10%, rgba(252, 73, 0, 0.1), transparent 60%),
+    radial-gradient(ellipse 40% 30% at 85% 110%, rgba(252, 73, 0, 0.05), transparent 60%);
 }
 .atmosphere::after {
   content: "";
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(135, 153, 143, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(135, 153, 143, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black, transparent 75%);
 }
@@ -172,7 +182,7 @@ body {
     transform 0.25s ease;
 }
 .card:hover {
-  border-color: var(--color-line2);
+  border-color: color-mix(in srgb, var(--color-signal) 40%, var(--color-line));
   background: var(--color-pane2);
 }
 

@@ -264,11 +264,11 @@ export default async function Painel({
               <span className="sonar-ring-2 absolute inset-0 rounded-full border border-signal/40" />
               <LogoMark size={26} />
             </span>
-            <span className="text-lg font-bold tracking-tight">
+            <span className="font-head text-lg font-extrabold tracking-tight">
               tontom<span className="text-signal">.</span>
             </span>
-            <span className="ml-1 rounded-full border border-line2 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-mist">
-              beta
+            <span className="ml-1 rounded-full bg-signal-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-signal">
+              Amplia
             </span>
           </Link>
 
