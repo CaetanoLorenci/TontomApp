@@ -19,23 +19,23 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const sb = supabaseAdmin();
 
-  const { data: lead } = await sb
-    .from("leads")
-    .select(
-      "id, phone, name, stage, value, code, attributed_via, created_at, clicks(utm_source, utm_campaign, utm_content, ad_id, ctwa_clid, fbclid)",
-    )
-    .eq("id", id)
-    .maybeSingle();
-  if (!lead) notFound();
-
-  const [{ data: msgs }, { data: events }] = await Promise.all([
+  // 3 queries em paralelo (usando o id direto) — sem esperar o lead pra buscar o resto
+  const [{ data: lead }, { data: msgs }, { data: events }] = await Promise.all([
+    sb
+      .from("leads")
+      .select(
+        "id, phone, name, stage, value, code, attributed_via, created_at, clicks(utm_source, utm_campaign, utm_content, ad_id, ctwa_clid, fbclid)",
+      )
+      .eq("id", id)
+      .maybeSingle(),
     sb
       .from("messages")
       .select("id, direction, content, created_at")
-      .or(`lead_id.eq.${lead.id},phone.eq.${lead.phone}`)
+      .eq("lead_id", id)
       .order("created_at", { ascending: true }),
-    sb.from("capi_events").select("event_name, created_at, response").eq("lead_id", lead.id),
+    sb.from("capi_events").select("event_name, created_at, response").eq("lead_id", id),
   ]);
+  if (!lead) notFound();
 
   const messages = (msgs ?? []) as Msg[];
   const click = lead.clicks as unknown as {
