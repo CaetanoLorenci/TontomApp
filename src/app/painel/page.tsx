@@ -39,6 +39,9 @@ type LeadRow = {
   attributed_via: string | null;
   created_at: string;
   scheduled_at: string | null;
+  last_message: string | null;
+  last_message_at: string | null;
+  last_message_dir: string | null;
   clicks: {
     utm_source: string | null;
     utm_campaign: string | null;
@@ -194,8 +197,9 @@ export default async function Painel({
   let leadsQuery = sb
     .from("leads")
     .select(
-      "id, phone, name, first_message, stage, value, code, attributed_via, created_at, scheduled_at, clicks(utm_source, utm_campaign, utm_content, ad_id, fbclid)",
+      "id, phone, name, first_message, stage, value, code, attributed_via, created_at, scheduled_at, last_message, last_message_at, last_message_dir, clicks(utm_source, utm_campaign, utm_content, ad_id, fbclid)",
     )
+    .order("last_message_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (since) leadsQuery = leadsQuery.gte("created_at", since.toISOString());
 
@@ -485,41 +489,64 @@ export default async function Painel({
                 const meta = STAGE[l.stage] ?? STAGE.novo;
                 const capi = capiByLead.get(l.id) ?? [];
                 const cr = l.clicks?.ad_id ? (creativeMap.get(l.clicks.ad_id) ?? null) : null;
+                const needsReply = l.last_message_dir === "in";
+                const initials = (l.name ?? "?")
+                  .trim()
+                  .split(/\s+/)
+                  .map((w) => w[0])
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase() || "?";
                 return (
                   <li
                     key={l.id}
-                    className="card anim-up p-4"
+                    className={`card anim-up p-4 transition-colors ${needsReply ? "!border-signal/40" : ""}`}
                     style={{ animationDelay: `${620 + Math.min(i, 8) * 60}ms` }}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-52">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ background: meta.color, boxShadow: `0 0 8px ${meta.color}` }}
-                          />
-                          <Link href={`/painel/lead/${l.id}`} className="font-semibold transition-colors hover:text-signal">
-                            {l.name ?? "Sem nome"}
-                          </Link>
-                          <span
-                            className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                            style={{ color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }}
+                      <div className="flex min-w-52 items-start gap-3">
+                        {/* avatar + indicador "aguardando resposta" */}
+                        <div className="relative shrink-0">
+                          <div
+                            className="num flex h-9 w-9 items-center justify-center rounded-full border text-xs font-bold"
+                            style={{ borderColor: meta.color, color: meta.color, background: `color-mix(in srgb, ${meta.color} 10%, transparent)` }}
                           >
-                            {meta.label}
-                          </span>
-                          {l.stage === "vendido" && l.value != null && (
-                            <span className="num text-xs font-bold text-signal">{brl.format(l.value)}</span>
+                            {initials}
+                          </div>
+                          {needsReply && (
+                            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-signal ring-2 ring-ink" title="aguardando sua resposta" />
                           )}
                         </div>
-                        <div className="num mt-1 text-xs text-mist">
-                          {formatPhone(l.phone)} · {formatWhen(l.created_at)}
-                        </div>
-                        {l.stage === "agendado" && l.scheduled_at && (
-                          <div className="num mt-1 inline-flex items-center gap-1 rounded-full bg-st-agen/10 px-2 py-0.5 text-[11px] font-medium text-st-agen">
-                            <IconCalendar size={11} />
-                            {formatSchedule(l.scheduled_at)}
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link href={`/painel/lead/${l.id}`} className="font-semibold transition-colors hover:text-signal">
+                              {l.name ?? "Sem nome"}
+                            </Link>
+                            <span
+                              className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                              style={{ color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }}
+                            >
+                              {meta.label}
+                            </span>
+                            {needsReply && (
+                              <span className="rounded-full bg-signal-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-signal">
+                                responder
+                              </span>
+                            )}
+                            {l.stage === "vendido" && l.value != null && (
+                              <span className="num text-xs font-bold text-signal">{brl.format(l.value)}</span>
+                            )}
                           </div>
-                        )}
+                          <div className="num mt-1 text-xs text-mist">
+                            {formatPhone(l.phone)} · {formatWhen(l.last_message_at ?? l.created_at)}
+                          </div>
+                          {l.stage === "agendado" && l.scheduled_at && (
+                            <div className="num mt-1 inline-flex items-center gap-1 rounded-full bg-st-agen/10 px-2 py-0.5 text-[11px] font-medium text-st-agen">
+                              <IconCalendar size={11} />
+                              {formatSchedule(l.scheduled_at)}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div className="text-right text-xs">
@@ -567,9 +594,12 @@ export default async function Painel({
                       </div>
                     </div>
 
-                    {l.first_message && (
+                    {(l.last_message ?? l.first_message) && (
                       <p className="mt-3 line-clamp-2 rounded-xl border border-line/60 bg-ink/60 px-3.5 py-2.5 text-sm text-mist">
-                        {l.first_message}
+                        <span className={`mr-1 font-semibold ${needsReply ? "text-st-agen" : "text-faint"}`}>
+                          {l.last_message ? (needsReply ? "Lead:" : "Você:") : ""}
+                        </span>
+                        {l.last_message ?? l.first_message}
                       </p>
                     )}
 
