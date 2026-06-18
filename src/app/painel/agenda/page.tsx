@@ -106,8 +106,11 @@ export default async function Agenda() {
               <IconFunnel size={14} /> Pipeline
             </Link>
             <span className="flex items-center gap-1.5 rounded-lg bg-signal-soft px-3 py-1.5 font-semibold text-signal">
-              <IconCalendar size={14} /> Agenda
+              Agenda
             </span>
+            <Link href="/painel/calendario" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">
+              <IconCalendar size={14} /> Calendário
+            </Link>
           </nav>
         </div>
       </header>
