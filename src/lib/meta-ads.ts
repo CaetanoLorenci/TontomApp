@@ -131,6 +131,98 @@ export async function getAdCreative(sb: SupabaseClient, adId: string | null): Pr
   return data as AdCreative;
 }
 
+// ── Performance / financeiro (central de comando, alongside Ads Manager) ──
+
+export type AccountFinance = {
+  currency: string;
+  balanceText: string | null; // "Saldo disponível (R$217,39 BRL)"
+  balanceValue: number | null; // 217.39
+  spendCap: number | null; // R$ (campos de conta vêm em centavos → /100)
+  amountSpent: number | null;
+  status: number;
+};
+
+export async function getAccountFinance(): Promise<AccountFinance | null> {
+  const token = process.env.META_ADS_TOKEN;
+  const act = process.env.META_AD_ACCOUNT_ID;
+  if (!token || !act) return null;
+  const url = `https://graph.facebook.com/${GRAPH}/${act}?fields=currency,account_status,spend_cap,amount_spent,funding_source_details`;
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    const d = (await res.json()) as {
+      currency?: string;
+      account_status?: number;
+      spend_cap?: string;
+      amount_spent?: string;
+      funding_source_details?: { display_string?: string };
+    };
+    const text = d.funding_source_details?.display_string ?? null;
+    const m = text?.match(/([\d.]+,\d{2})/);
+    const balanceValue = m ? Number(m[1].replace(/\./g, "").replace(",", ".")) : null;
+    return {
+      currency: d.currency ?? "BRL",
+      balanceText: text,
+      balanceValue,
+      spendCap: d.spend_cap ? Number(d.spend_cap) / 100 : null,
+      amountSpent: d.amount_spent ? Number(d.amount_spent) / 100 : null,
+      status: d.account_status ?? 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export type AdPerf = {
+  adId: string;
+  adName: string | null;
+  adsetName: string | null;
+  campaignName: string | null;
+  spend: number; // R$ (insights já vêm em unidade da moeda)
+  impressions: number;
+  conversations: number; // conversas iniciadas (messaging)
+};
+
+// Insights por anúncio no período (ads_read). datePreset: today|last_7d|last_30d|...
+export async function getAdsPerformance(datePreset = "last_30d"): Promise<AdPerf[]> {
+  const token = process.env.META_ADS_TOKEN;
+  const act = process.env.META_AD_ACCOUNT_ID;
+  if (!token || !act) return [];
+  const fields = "ad_id,ad_name,adset_name,campaign_name,spend,impressions,actions";
+  const url = `https://graph.facebook.com/${GRAPH}/${act}/insights?level=ad&fields=${fields}&date_preset=${datePreset}&limit=300`;
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return [];
+    const json = (await res.json()) as {
+      data?: {
+        ad_id?: string;
+        ad_name?: string;
+        adset_name?: string;
+        campaign_name?: string;
+        spend?: string;
+        impressions?: string;
+        actions?: { action_type: string; value: string }[];
+      }[];
+    };
+    return (json.data ?? []).map((r) => {
+      const conv = (r.actions ?? [])
+        .filter((a) => a.action_type.includes("messaging_conversation_started"))
+        .reduce((s, a) => s + Number(a.value || 0), 0);
+      return {
+        adId: r.ad_id ?? "",
+        adName: r.ad_name ?? null,
+        adsetName: r.adset_name ?? null,
+        campaignName: r.campaign_name ?? null,
+        spend: Number(r.spend || 0),
+        impressions: Number(r.impressions || 0),
+        conversations: conv,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 // Lê vários do cache de uma vez, SEM refresh (rápido, pra listas). Map ad_id -> criativo.
 export async function getAdCreatives(
   sb: SupabaseClient,

@@ -82,6 +82,9 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<{
             <span className="flex items-center gap-1.5 rounded-lg bg-signal-soft px-3 py-1.5 font-semibold text-signal">
               <IconCalendar size={14} /> Agenda
             </span>
+            <Link href="/painel/anuncios" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">
+              <IconBroadcast size={14} /> Anúncios
+            </Link>
           </nav>
         </div>
       </header>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAdCreatives } from "@/lib/meta-ads";
 import { Board, type PipelineCard } from "./board";
-import { LogoMark, IconCalendar, IconFunnel, IconChat } from "@/components/icons";
+import { LogoMark, IconCalendar, IconFunnel, IconChat, IconBroadcast } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +61,9 @@ export default async function Pipeline() {
             </span>
             <Link href="/painel/agenda" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">
               <IconCalendar size={14} /> Agenda
+            </Link>
+            <Link href="/painel/anuncios" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">
+              <IconBroadcast size={14} /> Anúncios
             </Link>
           </nav>
         </div>

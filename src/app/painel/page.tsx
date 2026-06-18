@@ -294,6 +294,13 @@ export default async function Painel({
               <IconCalendar size={15} />
               Agenda
             </Link>
+            <Link
+              href="/painel/anuncios"
+              className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
+            >
+              <IconBroadcast size={15} />
+              Anúncios
+            </Link>
             <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">
               {Object.entries(PERIODS).map(([k, v]) => (
                 <Link
