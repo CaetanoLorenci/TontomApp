@@ -28,14 +28,25 @@ export async function sendCapiEvent(input: CapiInput): Promise<CapiResult> {
   const token = process.env.META_CAPI_TOKEN;
   // CTWA nativo: evento de mensageria (ctwa_clid). Senão: evento de site (fbc do clique).
   const isCtwa = !!input.ctwaClid;
-  // CTWA precisa de um DATASET ligado à Página (o pixel de site não serve). Quando o
-  // Caetano achar/criar esse dataset, é só setar META_CTWA_DATASET_ID — sem deploy de código.
-  const datasetId =
-    isCtwa && process.env.META_CTWA_DATASET_ID
-      ? process.env.META_CTWA_DATASET_ID
-      : process.env.META_PIXEL_ID;
-  if (!datasetId || !token) {
-    throw new Error("Faltando META_PIXEL_ID/META_CTWA_DATASET_ID ou META_CAPI_TOKEN no ambiente.");
+  if (!token) {
+    throw new Error("Faltando META_CAPI_TOKEN no ambiente.");
+  }
+  // CTWA precisa de um DATASET de mensagens ligado à Página. O pixel de site NÃO serve:
+  // mandar um evento business_messaging pro pixel web faz o Meta rejeitar/mal-atribuir e
+  // ainda polui os dados do pixel. Por isso NÃO usamos fallback: enquanto
+  // META_CTWA_DATASET_ID não existir, a gente PULA o envio e loga o motivo (fica visível
+  // no capi_events quantas conversões CTWA ficaram sem mandar). Setar a env destrava — sem deploy.
+  const datasetId = isCtwa ? process.env.META_CTWA_DATASET_ID : process.env.META_PIXEL_ID;
+  if (!datasetId) {
+    return {
+      ok: false,
+      status: 0,
+      body: {
+        skipped: isCtwa
+          ? "META_CTWA_DATASET_ID não configurado — evento CTWA NÃO enviado (não cair no pixel web)"
+          : "META_PIXEL_ID não configurado — evento de site não enviado",
+      },
+    };
   }
   const payload = {
     data: [
