@@ -291,14 +291,8 @@ export default async function Painel({
               href="/painel/agenda"
               className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
             >
-              Agenda
-            </Link>
-            <Link
-              href="/painel/calendario"
-              className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
-            >
               <IconCalendar size={15} />
-              Calendário
+              Agenda
             </Link>
             <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">
               {Object.entries(PERIODS).map(([k, v]) => (

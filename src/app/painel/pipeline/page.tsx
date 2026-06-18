@@ -60,10 +60,7 @@ export default async function Pipeline() {
               <IconFunnel size={14} /> Pipeline
             </span>
             <Link href="/painel/agenda" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">
-              Agenda
-            </Link>
-            <Link href="/painel/calendario" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">
-              <IconCalendar size={14} /> Calendário
+              <IconCalendar size={14} /> Agenda
             </Link>
           </nav>
         </div>
