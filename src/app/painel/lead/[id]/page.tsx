@@ -10,7 +10,7 @@ import {
   STAGE_META,
   NEXT_ACTIONS,
 } from "@/lib/format";
-import { updateLead, scheduleLead } from "../../actions";
+import { updateLead, scheduleLead, addNote, addTag, removeTag } from "../../actions";
 import { ScheduleButton } from "../../schedule-button";
 import {
   IconMetaOk,
@@ -39,11 +39,11 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
   const sb = supabaseAdmin();
 
   // 3 queries em paralelo (usando o id direto) — sem esperar o lead pra buscar o resto
-  const [{ data: lead }, { data: msgs }, { data: events }] = await Promise.all([
+  const [{ data: lead }, { data: msgs }, { data: events }, { data: notesData }] = await Promise.all([
     sb
       .from("leads")
       .select(
-        "id, phone, name, stage, value, code, attributed_via, created_at, scheduled_at, scheduled_note, clicks(utm_source, utm_campaign, utm_content, ad_id, ctwa_clid, fbclid)",
+        "id, phone, name, stage, value, code, attributed_via, created_at, scheduled_at, scheduled_note, tags, clicks(utm_source, utm_campaign, utm_content, ad_id, ctwa_clid, fbclid)",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -53,8 +53,15 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
       .eq("lead_id", id)
       .order("created_at", { ascending: true }),
     sb.from("capi_events").select("event_name, created_at, response").eq("lead_id", id),
+    sb
+      .from("lead_notes")
+      .select("id, body, created_at")
+      .eq("lead_id", id)
+      .order("created_at", { ascending: false }),
   ]);
   if (!lead) notFound();
+  const tags = ((lead.tags as string[] | null) ?? []) as string[];
+  const notes = (notesData ?? []) as { id: string; body: string; created_at: string }[];
 
   const messages = (msgs ?? []) as Msg[];
   const click = lead.clicks as unknown as {
@@ -169,6 +176,61 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
             {lead.scheduled_note && <p className="mt-2 text-xs text-mist">📝 {lead.scheduled_note}</p>}
           </section>
         )}
+
+        {/* ficha do contato: tags + notas internas */}
+        <section className="card anim-up mt-4 p-4" style={{ animationDelay: "90ms" }}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-faint">Tags</span>
+            {tags.map((t) => (
+              <form key={t} action={removeTag} className="inline">
+                <input type="hidden" name="leadId" value={lead.id} />
+                <input type="hidden" name="tag" value={t} />
+                <button
+                  type="submit"
+                  title="remover tag"
+                  className="group inline-flex items-center gap-1 rounded-full bg-signal-soft px-2.5 py-0.5 text-[11px] font-medium text-signal transition-colors hover:bg-st-perd/15 hover:text-st-perd"
+                >
+                  {t}
+                  <span className="opacity-50 group-hover:opacity-100">×</span>
+                </button>
+              </form>
+            ))}
+            <form action={addTag} className="inline-flex">
+              <input type="hidden" name="leadId" value={lead.id} />
+              <input
+                name="tag"
+                placeholder="+ tag"
+                className="num w-20 rounded-full border border-line bg-transparent px-2.5 py-0.5 text-[11px] placeholder:text-faint focus:border-signal/60 focus:outline-none"
+              />
+            </form>
+          </div>
+
+          <form action={addNote} className="mt-3 flex gap-2">
+            <input type="hidden" name="leadId" value={lead.id} />
+            <input
+              name="body"
+              placeholder="Adicionar nota interna…"
+              className="flex-1 rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
+            >
+              Salvar
+            </button>
+          </form>
+
+          {notes.length > 0 && (
+            <ul className="mt-3 space-y-2">
+              {notes.map((n) => (
+                <li key={n.id} className="rounded-xl border border-line/60 bg-ink/40 px-3 py-2">
+                  <p className="whitespace-pre-wrap text-sm text-mist">{n.body}</p>
+                  <span className="num mt-1 block text-[10px] text-faint">{formatWhen(n.created_at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         {/* chat + resposta otimista (client) */}
         <div className="anim-up mt-4" style={{ animationDelay: "120ms" }}>

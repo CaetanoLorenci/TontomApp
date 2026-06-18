@@ -65,6 +65,38 @@ export async function updateLead(formData: FormData) {
   revalidateLead(leadId);
 }
 
+// ── Ficha do contato (CRM) ──────────────────────────────────
+export async function addNote(formData: FormData) {
+  const leadId = String(formData.get("leadId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  if (!leadId || !body) return;
+  await supabaseAdmin().from("lead_notes").insert({ lead_id: leadId, body });
+  revalidatePath(`/painel/lead/${leadId}`);
+}
+
+export async function addTag(formData: FormData) {
+  const leadId = String(formData.get("leadId") ?? "");
+  const tag = String(formData.get("tag") ?? "").trim().toLowerCase().slice(0, 30);
+  if (!leadId || !tag) return;
+  const sb = supabaseAdmin();
+  const { data: lead } = await sb.from("leads").select("tags").eq("id", leadId).maybeSingle();
+  const tags = new Set<string>((lead?.tags as string[] | null) ?? []);
+  tags.add(tag);
+  await sb.from("leads").update({ tags: [...tags] }).eq("id", leadId);
+  revalidatePath(`/painel/lead/${leadId}`);
+}
+
+export async function removeTag(formData: FormData) {
+  const leadId = String(formData.get("leadId") ?? "");
+  const tag = String(formData.get("tag") ?? "");
+  if (!leadId || !tag) return;
+  const sb = supabaseAdmin();
+  const { data: lead } = await sb.from("leads").select("tags").eq("id", leadId).maybeSingle();
+  const tags = ((lead?.tags as string[] | null) ?? []).filter((t) => t !== tag);
+  await sb.from("leads").update({ tags }).eq("id", leadId);
+  revalidatePath(`/painel/lead/${leadId}`);
+}
+
 // Move um lead de estágio (arrastar no Kanban). Humano pode mover em qualquer direção.
 // value: usado ao mover pra "vendido" → o Purchase já sai COM o valor (ROI no Meta).
 export async function moveLeadStage(leadId: string, stage: string, value?: number | null) {
