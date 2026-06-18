@@ -19,6 +19,7 @@ import {
   IconSale,
   IconBroadcast,
   IconWarn,
+  IconFunnel,
 } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -100,6 +101,9 @@ export default async function Agenda() {
           <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">
             <Link href="/painel" className="rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">
               Painel
+            </Link>
+            <Link href="/painel/pipeline" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">
+              <IconFunnel size={14} /> Pipeline
             </Link>
             <span className="flex items-center gap-1.5 rounded-lg bg-signal-soft px-3 py-1.5 font-semibold text-signal">
               <IconCalendar size={14} /> Agenda

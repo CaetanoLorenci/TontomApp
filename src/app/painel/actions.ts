@@ -65,6 +65,14 @@ export async function updateLead(formData: FormData) {
   revalidateLead(leadId);
 }
 
+// Move um lead de estágio (arrastar no Kanban). Humano pode mover em qualquer direção.
+// value: usado ao mover pra "vendido" → o Purchase já sai COM o valor (ROI no Meta).
+export async function moveLeadStage(leadId: string, stage: string, value?: number | null) {
+  if (!leadId || !stage) return;
+  await advanceStage(leadId, stage, value ?? null, { onlyForward: false, source: "painel" });
+  revalidateLead(leadId);
+}
+
 // Define/reagenda a data-hora de um lead (mini-CRM). Garante estágio 'agendado'
 // se ainda estiver antes dele (dispara CAPI uma vez); não rebaixa vendido/perdido.
 export async function scheduleLead(formData: FormData) {

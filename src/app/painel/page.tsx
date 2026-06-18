@@ -281,6 +281,13 @@ export default async function Painel({
 
           <div className="flex items-center gap-2">
             <Link
+              href="/painel/pipeline"
+              className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
+            >
+              <IconFunnel size={15} />
+              Pipeline
+            </Link>
+            <Link
               href="/painel/agenda"
               className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
             >
