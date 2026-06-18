@@ -159,3 +159,24 @@ export function IconPhone({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+/* Agenda (calendário) */
+export function IconCalendar({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <rect x="4" y="5.5" width="16" height="15" rx="2.5" />
+      <path d="M4 9.5h16M8 3.5v3M16 3.5v3" />
+      <path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01" />
+    </svg>
+  );
+}
+
+/* Relógio (horário) */
+export function IconClock({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8v4.2l2.8 1.8" />
+    </svg>
+  );
+}

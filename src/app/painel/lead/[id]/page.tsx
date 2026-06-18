@@ -1,9 +1,28 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
-import { brl, formatPhone, formatWhen, STAGE_META, NEXT_ACTIONS } from "@/lib/format";
-import { updateLead } from "../../actions";
-import { IconBroadcast, IconMetaOk, IconWarn, IconAdvance, IconSale, IconPhone, LogoMark } from "@/components/icons";
+import {
+  brl,
+  formatPhone,
+  formatWhen,
+  formatSchedule,
+  isoToBrLocalInput,
+  STAGE_META,
+  NEXT_ACTIONS,
+} from "@/lib/format";
+import { updateLead, scheduleLead } from "../../actions";
+import { ScheduleButton } from "../../schedule-button";
+import {
+  IconBroadcast,
+  IconMetaOk,
+  IconWarn,
+  IconAdvance,
+  IconSale,
+  IconPhone,
+  IconCalendar,
+  IconClock,
+  LogoMark,
+} from "@/components/icons";
 import { Chat } from "./chat";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +43,7 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
     sb
       .from("leads")
       .select(
-        "id, phone, name, stage, value, code, attributed_via, created_at, clicks(utm_source, utm_campaign, utm_content, ad_id, ctwa_clid, fbclid)",
+        "id, phone, name, stage, value, code, attributed_via, created_at, scheduled_at, scheduled_note, clicks(utm_source, utm_campaign, utm_content, ad_id, ctwa_clid, fbclid)",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -121,6 +140,41 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
           )}
         </section>
 
+        {/* agendamento (mini-CRM) */}
+        {(lead.stage === "agendado" || lead.scheduled_at) && (
+          <section className="card anim-up mt-4 p-4" style={{ animationDelay: "60ms" }}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <IconCalendar size={16} className="text-st-agen" />
+                {lead.scheduled_at ? (
+                  <span className="font-medium">
+                    Agendado <span className="num text-st-agen">{formatSchedule(lead.scheduled_at)}</span>
+                  </span>
+                ) : (
+                  <span className="text-faint">Agendado — sem data definida</span>
+                )}
+              </div>
+              <form action={scheduleLead} className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="leadId" value={lead.id} />
+                <input
+                  type="datetime-local"
+                  name="scheduledAt"
+                  required
+                  defaultValue={lead.scheduled_at ? isoToBrLocalInput(lead.scheduled_at) : undefined}
+                  className="num rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm focus:border-signal/60 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
+                >
+                  <IconClock size={14} /> {lead.scheduled_at ? "Reagendar" : "Definir"}
+                </button>
+              </form>
+            </div>
+            {lead.scheduled_note && <p className="mt-2 text-xs text-mist">📝 {lead.scheduled_note}</p>}
+          </section>
+        )}
+
         {/* chat + resposta otimista (client) */}
         <div className="anim-up mt-4" style={{ animationDelay: "120ms" }}>
           <Chat leadId={lead.id} messages={messages} />
@@ -129,43 +183,55 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
         {/* ações de estágio */}
         {NEXT_ACTIONS[lead.stage]?.length > 0 && (
           <section className="card anim-up sticky bottom-4 mt-4 p-4" style={{ animationDelay: "200ms" }}>
-            <form action={updateLead} className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="leadId" value={lead.id} />
+            <div className="flex flex-wrap items-center gap-2">
               <span className="mr-1 text-[11px] font-semibold uppercase tracking-widest text-faint">Mover pra</span>
-              {NEXT_ACTIONS[lead.stage].map((s) => (
-                <button
-                  key={s}
-                  type="submit"
-                  name="stage"
-                  value={s}
-                  className={
-                    s === "vendido"
-                      ? "flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]"
-                      : s === "perdido"
-                        ? "rounded-xl border border-line px-3.5 py-1.5 text-sm text-faint transition-colors hover:border-st-perd/50 hover:text-st-perd"
-                        : "flex items-center gap-1.5 rounded-xl border border-line2 bg-pane2 px-3.5 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
-                  }
-                >
-                  {s === "vendido" ? (
-                    <>
-                      <IconSale size={14} /> Vendido
-                    </>
-                  ) : s === "perdido" ? (
-                    "Perdido"
-                  ) : (
-                    <>
-                      <IconAdvance size={14} /> {STAGE_META[s].label}
-                    </>
-                  )}
-                </button>
-              ))}
-              <input
-                name="value"
-                inputMode="decimal"
-                placeholder="valor R$"
-                className="num w-32 rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
-              />
-            </form>
+              <form action={updateLead} className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="leadId" value={lead.id} />
+                {NEXT_ACTIONS[lead.stage]
+                  .filter((s) => s !== "agendado")
+                  .map((s) => (
+                    <button
+                      key={s}
+                      type="submit"
+                      name="stage"
+                      value={s}
+                      className={
+                        s === "vendido"
+                          ? "flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]"
+                          : s === "perdido"
+                            ? "rounded-xl border border-line px-3.5 py-1.5 text-sm text-faint transition-colors hover:border-st-perd/50 hover:text-st-perd"
+                            : "flex items-center gap-1.5 rounded-xl border border-line2 bg-pane2 px-3.5 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
+                      }
+                    >
+                      {s === "vendido" ? (
+                        <>
+                          <IconSale size={14} /> Vendido
+                        </>
+                      ) : s === "perdido" ? (
+                        "Perdido"
+                      ) : (
+                        <>
+                          <IconAdvance size={14} /> {STAGE_META[s].label}
+                        </>
+                      )}
+                    </button>
+                  ))}
+                {NEXT_ACTIONS[lead.stage].includes("vendido") && (
+                  <input
+                    name="value"
+                    inputMode="decimal"
+                    placeholder="valor R$"
+                    className="num w-32 rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+                  />
+                )}
+              </form>
+              {NEXT_ACTIONS[lead.stage].includes("agendado") && (
+                <ScheduleButton
+                  leadId={lead.id}
+                  defaultValue={lead.scheduled_at ? isoToBrLocalInput(lead.scheduled_at) : null}
+                />
+              )}
+            </div>
           </section>
         )}
       </div>

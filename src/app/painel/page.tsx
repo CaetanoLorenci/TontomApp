@@ -14,7 +14,10 @@ import {
   IconWarn,
   IconMetaOk,
   IconAdvance,
+  IconCalendar,
 } from "@/components/icons";
+import { formatSchedule, isoToBrLocalInput } from "@/lib/format";
+import { ScheduleButton } from "./schedule-button";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +37,7 @@ type LeadRow = {
   code: string | null;
   attributed_via: string | null;
   created_at: string;
+  scheduled_at: string | null;
   clicks: {
     utm_source: string | null;
     utm_campaign: string | null;
@@ -51,7 +55,7 @@ const STAGE: Record<string, { label: string; color: string }> = {
 };
 
 const NEXT_ACTIONS: Record<string, string[]> = {
-  novo: ["qualificado", "perdido"],
+  novo: ["qualificado", "agendado", "perdido"],
   qualificado: ["agendado", "vendido", "perdido"],
   agendado: ["vendido", "perdido"],
   vendido: [],
@@ -188,7 +192,7 @@ export default async function Painel({
   let leadsQuery = sb
     .from("leads")
     .select(
-      "id, phone, name, first_message, stage, value, code, attributed_via, created_at, clicks(utm_source, utm_campaign, utm_content, fbclid)",
+      "id, phone, name, first_message, stage, value, code, attributed_via, created_at, scheduled_at, clicks(utm_source, utm_campaign, utm_content, fbclid)",
     )
     .order("created_at", { ascending: false });
   if (since) leadsQuery = leadsQuery.gte("created_at", since.toISOString());
@@ -273,6 +277,13 @@ export default async function Painel({
           </Link>
 
           <div className="flex items-center gap-2">
+            <Link
+              href="/painel/agenda"
+              className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
+            >
+              <IconCalendar size={15} />
+              Agenda
+            </Link>
             <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">
               {Object.entries(PERIODS).map(([k, v]) => (
                 <Link
@@ -485,6 +496,12 @@ export default async function Painel({
                         <div className="num mt-1 text-xs text-mist">
                           {formatPhone(l.phone)} · {formatWhen(l.created_at)}
                         </div>
+                        {l.stage === "agendado" && l.scheduled_at && (
+                          <div className="num mt-1 inline-flex items-center gap-1 rounded-full bg-st-agen/10 px-2 py-0.5 text-[11px] font-medium text-st-agen">
+                            <IconCalendar size={11} />
+                            {formatSchedule(l.scheduled_at)}
+                          </div>
+                        )}
                       </div>
 
                       <div className="text-right text-xs">
@@ -539,42 +556,54 @@ export default async function Painel({
                     </Link>
 
                     {NEXT_ACTIONS[l.stage]?.length > 0 && (
-                      <form action={updateLead} className="mt-3 flex flex-wrap items-center gap-2">
-                        <input type="hidden" name="leadId" value={l.id} />
-                        {NEXT_ACTIONS[l.stage].map((s) => (
-                          <button
-                            key={s}
-                            type="submit"
-                            name="stage"
-                            value={s}
-                            className={
-                              s === "vendido"
-                                ? "flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]"
-                                : s === "perdido"
-                                  ? "rounded-xl border border-line px-3.5 py-1.5 text-sm text-faint transition-colors hover:border-st-perd/50 hover:text-st-perd"
-                                  : "flex items-center gap-1.5 rounded-xl border border-line2 bg-pane2 px-3.5 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
-                            }
-                          >
-                            {s === "vendido" ? (
-                              <>
-                                <IconSale size={14} /> Vendido
-                              </>
-                            ) : s === "perdido" ? (
-                              "Perdido"
-                            ) : (
-                              <>
-                                <IconAdvance size={14} /> {STAGE[s].label}
-                              </>
-                            )}
-                          </button>
-                        ))}
-                        <input
-                          name="value"
-                          inputMode="decimal"
-                          placeholder="valor R$"
-                          className="num w-32 rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
-                        />
-                      </form>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <form action={updateLead} className="flex flex-wrap items-center gap-2">
+                          <input type="hidden" name="leadId" value={l.id} />
+                          {NEXT_ACTIONS[l.stage]
+                            .filter((s) => s !== "agendado")
+                            .map((s) => (
+                              <button
+                                key={s}
+                                type="submit"
+                                name="stage"
+                                value={s}
+                                className={
+                                  s === "vendido"
+                                    ? "flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]"
+                                    : s === "perdido"
+                                      ? "rounded-xl border border-line px-3.5 py-1.5 text-sm text-faint transition-colors hover:border-st-perd/50 hover:text-st-perd"
+                                      : "flex items-center gap-1.5 rounded-xl border border-line2 bg-pane2 px-3.5 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
+                                }
+                              >
+                                {s === "vendido" ? (
+                                  <>
+                                    <IconSale size={14} /> Vendido
+                                  </>
+                                ) : s === "perdido" ? (
+                                  "Perdido"
+                                ) : (
+                                  <>
+                                    <IconAdvance size={14} /> {STAGE[s].label}
+                                  </>
+                                )}
+                              </button>
+                            ))}
+                          {NEXT_ACTIONS[l.stage].includes("vendido") && (
+                            <input
+                              name="value"
+                              inputMode="decimal"
+                              placeholder="valor R$"
+                              className="num w-32 rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+                            />
+                          )}
+                        </form>
+                        {NEXT_ACTIONS[l.stage].includes("agendado") && (
+                          <ScheduleButton
+                            leadId={l.id}
+                            defaultValue={l.scheduled_at ? isoToBrLocalInput(l.scheduled_at) : null}
+                          />
+                        )}
+                      </div>
                     )}
                   </li>
                 );

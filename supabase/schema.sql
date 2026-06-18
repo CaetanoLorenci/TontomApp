@@ -40,6 +40,8 @@ create table if not exists public.leads (
   stage         text not null default 'novo',  -- novo | qualificado | agendado | vendido | perdido
   value         numeric(12,2),                 -- faturamento da venda (quando vendido)
   attributed_via text check (attributed_via in ('codigo','janela','ctwa')), -- como foi atribuído
+  scheduled_at  timestamptz,                   -- data/hora do compromisso (mini-CRM/agenda)
+  scheduled_note text,                          -- nota livre do agendamento
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
@@ -47,6 +49,7 @@ create table if not exists public.leads (
 create index if not exists leads_stage_idx on public.leads (stage);
 create index if not exists leads_created_at_idx on public.leads (created_at desc);
 create index if not exists leads_click_id_idx on public.leads (click_id); -- cobre a FK (advisor de performance)
+create index if not exists leads_scheduled_at_idx on public.leads (scheduled_at) where scheduled_at is not null;
 
 -- ───────────────────────── capi_events ─────────────────────────
 -- Log dos eventos enviados pro Meta (debug + idempotência).
