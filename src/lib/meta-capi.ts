@@ -25,11 +25,16 @@ export type CapiInput = {
 export type CapiResult = { ok: boolean; status: number; body: unknown };
 
 export async function sendCapiEvent(input: CapiInput): Promise<CapiResult> {
-  const token = process.env.META_CAPI_TOKEN;
   // CTWA nativo: evento de mensageria (ctwa_clid). Senão: evento de site (fbc do clique).
   const isCtwa = !!input.ctwaClid;
+  // canal whatsapp posta no DATASET de mensagens → precisa de token com
+  // whatsapp_business_manage_events (o token do pixel NÃO tem acesso ao dataset).
+  // site posta no pixel web → token do pixel.
+  const token = isCtwa
+    ? (process.env.WHATSAPP_ACCESS_TOKEN ?? process.env.META_CAPI_TOKEN)
+    : process.env.META_CAPI_TOKEN;
   if (!token) {
-    throw new Error("Faltando META_CAPI_TOKEN no ambiente.");
+    throw new Error("Faltando token CAPI (WHATSAPP_ACCESS_TOKEN/META_CAPI_TOKEN) no ambiente.");
   }
   // CTWA precisa de um DATASET de mensagens ligado à Página. O pixel de site NÃO serve:
   // mandar um evento business_messaging pro pixel web faz o Meta rejeitar/mal-atribuir e
@@ -60,7 +65,12 @@ export async function sendCapiEvent(input: CapiInput): Promise<CapiResult> {
         user_data: {
           ph: [sha256(input.phone.replace(/\D/g, ""))],
           ...(isCtwa ? { ctwa_clid: input.ctwaClid } : {}),
-          // business_messaging exige a identidade da Página dona dos anúncios
+          // canal whatsapp: o Meta casa pelo whatsapp_business_account_id (o dataset é
+          // criado a partir da WABA). Mantemos page_id junto — é campo válido e
+          // messaging_channel=whatsapp desambigua de Messenger.
+          ...(isCtwa && process.env.WHATSAPP_WABA_ID
+            ? { whatsapp_business_account_id: process.env.WHATSAPP_WABA_ID }
+            : {}),
           ...(isCtwa && process.env.META_PAGE_ID ? { page_id: process.env.META_PAGE_ID } : {}),
           ...(!isCtwa && input.fbc ? { fbc: input.fbc } : {}),
         },
