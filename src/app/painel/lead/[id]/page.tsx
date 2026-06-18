@@ -13,9 +13,7 @@ import {
 import { updateLead, scheduleLead } from "../../actions";
 import { ScheduleButton } from "../../schedule-button";
 import {
-  IconBroadcast,
   IconMetaOk,
-  IconWarn,
   IconAdvance,
   IconSale,
   IconPhone,
@@ -23,6 +21,8 @@ import {
   IconClock,
   LogoMark,
 } from "@/components/icons";
+import { AdSourceCard } from "@/components/ad-source-card";
+import { getAdCreative } from "@/lib/meta-ads";
 import { Chat } from "./chat";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +66,7 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
     fbclid: string | null;
   } | null;
   const meta = STAGE_META[lead.stage] ?? STAGE_META.novo;
+  const creative = await getAdCreative(sb, click?.ad_id ?? null);
 
   return (
     <main className="relative min-h-screen">
@@ -108,22 +109,16 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
 
       <div className="relative z-10 mx-auto max-w-3xl px-6 py-6">
         {/* origem + capi */}
-        <section className="card anim-up flex flex-wrap items-center justify-between gap-3 p-4">
-          {click ? (
-            <div className="flex items-center gap-2 text-sm">
-              <IconBroadcast size={15} className="text-signal" />
-              <span className="font-medium">{click.utm_campaign ?? "(sem campanha)"}</span>
-              <span className="num text-xs text-faint">
-                {[click.utm_source, click.ad_id && `ad ${click.ad_id}`, lead.code].filter(Boolean).join(" · ")}
-              </span>
-              {lead.attributed_via === "ctwa" && <span className="text-xs font-semibold text-signal">nativo</span>}
-              {lead.attributed_via === "janela" && <span className="text-xs text-st-agen">≈ janela</span>}
-            </div>
-          ) : (
-            <span className="flex items-center gap-1.5 text-sm text-st-agen">
-              <IconWarn size={14} /> sem origem rastreada
-            </span>
-          )}
+        <section className="card anim-up flex flex-wrap items-start justify-between gap-3 p-4">
+          <div className="min-w-0 flex-1">
+            <AdSourceCard
+              creative={creative}
+              fallbackCampaign={click?.utm_campaign}
+              adId={click?.ad_id}
+              code={lead.code}
+              attributedVia={lead.attributed_via}
+            />
+          </div>
           {(events ?? []).length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {(events ?? []).map((e, i) => (

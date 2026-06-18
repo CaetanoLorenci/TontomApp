@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { advanceStage, extractValue } from "@/lib/conversion";
+import { cacheAdCreative } from "@/lib/meta-ads";
 import {
   cloudText,
   type CloudWebhook,
@@ -168,6 +169,9 @@ async function upsertCtwaClick(sb: SB, ref: CloudReferral): Promise<{ id: string
     console.error("[cloud-webhook] falha ao criar click ctwa:", error.message);
     return null;
   }
+  // cacheia o criativo do anúncio (nome de campanha/conjunto + miniatura) pro card do painel.
+  // best-effort: nunca lança e não bloqueia a atribuição se a Marketing API falhar.
+  if (ref.source_id) await cacheAdCreative(sb, ref.source_id);
   return created;
 }
 

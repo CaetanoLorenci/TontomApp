@@ -4,7 +4,7 @@ import { createHash } from "crypto";
 // É assim que a campanha passa a otimizar por QUALIDADE: só mandamos o evento
 // quando o lead vira qualificado/agendado/vendido — não por conversa barata.
 
-const GRAPH_VERSION = process.env.META_GRAPH_VERSION ?? "v21.0";
+const GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0"; // || (não ??): env vazia também cai no default
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");

@@ -18,6 +18,7 @@ import {
 } from "@/components/icons";
 import { formatSchedule, isoToBrLocalInput } from "@/lib/format";
 import { ScheduleButton } from "./schedule-button";
+import { getAdCreatives } from "@/lib/meta-ads";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ type LeadRow = {
     utm_source: string | null;
     utm_campaign: string | null;
     utm_content: string | null;
+    ad_id: string | null;
     fbclid: string | null;
   } | null;
 };
@@ -192,7 +194,7 @@ export default async function Painel({
   let leadsQuery = sb
     .from("leads")
     .select(
-      "id, phone, name, first_message, stage, value, code, attributed_via, created_at, scheduled_at, clicks(utm_source, utm_campaign, utm_content, fbclid)",
+      "id, phone, name, first_message, stage, value, code, attributed_via, created_at, scheduled_at, clicks(utm_source, utm_campaign, utm_content, ad_id, fbclid)",
     )
     .order("created_at", { ascending: false });
   if (since) leadsQuery = leadsQuery.gte("created_at", since.toISOString());
@@ -203,6 +205,7 @@ export default async function Painel({
   ]);
 
   const leads = (data ?? []) as unknown as LeadRow[];
+  const creativeMap = await getAdCreatives(sb, leads.map((l) => l.clicks?.ad_id));
   const capiByLead = new Map<string, string[]>();
   for (const e of events ?? []) {
     const list = capiByLead.get(e.lead_id) ?? [];
@@ -467,6 +470,7 @@ export default async function Painel({
               {leads.map((l, i) => {
                 const meta = STAGE[l.stage] ?? STAGE.novo;
                 const capi = capiByLead.get(l.id) ?? [];
+                const cr = l.clicks?.ad_id ? (creativeMap.get(l.clicks.ad_id) ?? null) : null;
                 return (
                   <li
                     key={l.id}
@@ -508,8 +512,17 @@ export default async function Painel({
                         {l.clicks ? (
                           <>
                             <div className="flex items-center justify-end gap-1.5 font-medium text-snow">
-                              <IconBroadcast size={13} className="text-signal" />
-                              {l.clicks.utm_campaign ?? "(sem campanha)"}
+                              {cr?.image_path ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={cr.image_path}
+                                  alt=""
+                                  className="h-5 w-5 rounded border border-line object-cover"
+                                />
+                              ) : (
+                                <IconBroadcast size={13} className="text-signal" />
+                              )}
+                              {cr?.campaign_name ?? l.clicks.utm_campaign ?? "(sem campanha)"}
                             </div>
                             <div className="num mt-0.5 text-faint">
                               {[l.clicks.utm_source, l.code].filter(Boolean).join(" · ")}

@@ -3,7 +3,7 @@
 // A grande vantagem: a 1ª mensagem de um lead de anúncio CTWA traz o objeto
 // `referral` com ctwa_clid + source_id nativos → atribuição e conversão oficiais.
 
-const GRAPH = process.env.META_GRAPH_VERSION ?? "v21.0";
+const GRAPH = process.env.META_GRAPH_VERSION || "v21.0"; // || (não ??): env vazia também cai no default
 
 export type CloudSendResult = { ok: boolean; status: number; body: unknown };
 
