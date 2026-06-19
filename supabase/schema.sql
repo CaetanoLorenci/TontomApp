@@ -91,6 +91,25 @@ create table if not exists public.stage_triggers (
   created_at timestamptz not null default now()
 );
 
+-- ───────────────────────── multi-tenant (white-label) ─────────────────────────
+-- org_id (slug) em todas as tabelas; default 'amplia'. Login por cliente via Supabase Auth.
+create table if not exists public.organizations (
+  slug        text primary key,
+  name        text not null,
+  logo_url    text,
+  brand_color text,
+  created_at  timestamptz not null default now()
+);
+create table if not exists public.org_members (
+  id         uuid primary key default gen_random_uuid(),
+  org_slug   text not null references public.organizations (slug) on delete cascade,
+  user_id    uuid not null,               -- auth.users(id)
+  role       text not null default 'member' check (role in ('owner','member')),
+  created_at timestamptz not null default now(),
+  unique (org_slug, user_id)
+);
+-- leads/clicks/messages/capi_events/stage_triggers/lead_notes têm: org_id text not null default 'amplia'
+
 -- ───────────────────────── RLS ─────────────────────────
 alter table public.clicks         enable row level security;
 alter table public.leads          enable row level security;
