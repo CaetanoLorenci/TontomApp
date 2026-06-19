@@ -276,7 +276,7 @@ export default async function Painel({
               <LogoMark size={26} />
             </span>
             <span className="font-head text-lg font-extrabold tracking-tight">
-              tontom<span className="text-signal">.</span>
+              Amplia <span className="text-signal">Hub</span>
             </span>
             <span className="ml-1 rounded-full bg-signal-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-signal">
               Amplia
@@ -671,7 +671,7 @@ export default async function Painel({
 
         <footer className="mt-10 flex items-center justify-between border-t border-line pt-4 text-xs text-faint">
           <span>
-            tontom<span className="text-signal">.</span> — sonar de conversas · Grupo Amplia
+            Amplia <span className="text-signal">Hub</span> — CRM de tráfego pago · Grupo Amplia
           </span>
           <span className="num">anúncio → conversa → venda → Meta</span>
         </footer>

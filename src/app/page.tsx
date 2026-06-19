@@ -15,10 +15,10 @@ export default function Home() {
         </div>
 
         <h1 className="anim-up mt-6 text-6xl font-black tracking-tighter" style={{ animationDelay: "120ms" }}>
-          tontom<span className="text-signal">.</span>
+          Amplia <span className="text-signal">Hub</span>
         </h1>
         <p className="anim-up mt-1 text-xs font-bold uppercase tracking-[0.3em] text-faint" style={{ animationDelay: "160ms" }}>
-          por Amplia
+          CRM de tráfego pago
         </p>
 
         <p className="anim-up mt-5 max-w-md text-balance text-lg text-mist" style={{ animationDelay: "240ms" }}>

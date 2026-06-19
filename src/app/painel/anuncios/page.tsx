@@ -75,7 +75,7 @@ export default async function Anuncios({ searchParams }: { searchParams: Promise
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
           <Link href="/painel" className="flex items-center gap-2.5">
             <LogoMark size={26} />
-            <span className="font-head text-lg font-extrabold tracking-tight">tontom<span className="text-signal">.</span></span>
+            <span className="font-head text-lg font-extrabold tracking-tight">Amplia <span className="text-signal">Hub</span></span>
           </Link>
           <div className="flex items-center gap-2">
             <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">

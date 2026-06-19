@@ -49,7 +49,7 @@ export default async function Pipeline() {
           <Link href="/painel" className="flex items-center gap-2.5">
             <LogoMark size={26} />
             <span className="font-head text-lg font-extrabold tracking-tight">
-              tontom<span className="text-signal">.</span>
+              Amplia <span className="text-signal">Hub</span>
             </span>
           </Link>
           <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">

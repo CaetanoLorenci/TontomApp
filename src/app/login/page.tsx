@@ -31,7 +31,7 @@ export default function Login() {
         <div className="flex items-center gap-2.5">
           <LogoMark size={30} />
           <span className="font-head text-xl font-extrabold tracking-tight">
-            tontom<span className="text-signal">.</span>
+            Amplia <span className="text-signal">Hub</span>
           </span>
         </div>
 

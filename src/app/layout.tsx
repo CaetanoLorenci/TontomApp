@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tontom — Amplia",
+  title: "Amplia Hub",
   description:
     "Rastreia cada conversa do WhatsApp até o anúncio de origem e devolve a venda pro Meta otimizar por qualidade.",
 };
