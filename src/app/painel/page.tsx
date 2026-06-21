@@ -19,6 +19,7 @@ import {
 import { formatSchedule, isoToBrLocalInput } from "@/lib/format";
 import { ScheduleButton } from "./schedule-button";
 import { getAdCreatives } from "@/lib/meta-ads";
+import { getScope } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -194,6 +195,7 @@ export default async function Painel({
   const since = periodStart(PERIODS[period].days);
 
   const sb = supabaseAdmin();
+  const { org, seesAll } = await getScope();
   let leadsQuery = sb
     .from("leads")
     .select(
@@ -202,11 +204,12 @@ export default async function Painel({
     .order("last_message_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (since) leadsQuery = leadsQuery.gte("created_at", since.toISOString());
+  if (!seesAll) leadsQuery = leadsQuery.eq("org_id", org);
 
-  const [{ data, error }, { data: events }] = await Promise.all([
-    leadsQuery,
-    sb.from("capi_events").select("lead_id, event_name"),
-  ]);
+  let eventsQuery = sb.from("capi_events").select("lead_id, event_name");
+  if (!seesAll) eventsQuery = eventsQuery.eq("org_id", org);
+
+  const [{ data, error }, { data: events }] = await Promise.all([leadsQuery, eventsQuery]);
 
   const leads = (data ?? []) as unknown as LeadRow[];
   const creativeMap = await getAdCreatives(sb, leads.map((l) => l.clicks?.ad_id));

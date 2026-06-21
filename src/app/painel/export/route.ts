@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getScope } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,12 +19,14 @@ export async function GET(req: NextRequest) {
   const p = req.nextUrl.searchParams.get("p") ?? "30d";
   const days = p in DAYS ? DAYS[p] : 30;
 
+  const { org, seesAll } = await getScope();
   let query = supabaseAdmin()
     .from("leads")
     .select(
       "phone, name, stage, value, code, first_message, created_at, clicks(utm_source, utm_medium, utm_campaign, utm_content, fbclid)",
     )
     .order("created_at", { ascending: false });
+  if (!seesAll) query = query.eq("org_id", org);
 
   if (days !== null) {
     const d = new Date();

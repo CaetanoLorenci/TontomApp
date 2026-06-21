@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAccountFinance, getAdsPerformance, getAdCreatives, type AdPerf } from "@/lib/meta-ads";
 import { brl } from "@/lib/format";
+import { getScope } from "@/lib/auth";
 import { LogoMark, IconChat, IconFunnel, IconCalendar, IconBroadcast, IconWarn, IconSale, IconTrend } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -23,10 +24,13 @@ export default async function Anuncios({ searchParams }: { searchParams: Promise
   const since = new Date(Date.now() - PERIODS[period].days * 86_400_000).toISOString();
 
   const sb = supabaseAdmin();
+  const { org, seesAll } = await getScope();
+  let leadsQ = sb.from("leads").select("stage, value, created_at, clicks(ad_id)").gte("created_at", since);
+  if (!seesAll) leadsQ = leadsQ.eq("org_id", org);
   const [finance, perf, { data: leadRows }] = await Promise.all([
     getAccountFinance(),
     getAdsPerformance(PERIODS[period].preset),
-    sb.from("leads").select("stage, value, created_at, clicks(ad_id)").gte("created_at", since),
+    leadsQ,
   ]);
 
   // une por ad_id: performance do Meta + resultados do Tontom
@@ -47,13 +51,15 @@ export default async function Anuncios({ searchParams }: { searchParams: Promise
 
   const creatives = await getAdCreatives(sb, [...map.keys()]);
 
-  const rows = [...map.entries()].map(([adId, a]) => {
+  let rows = [...map.entries()].map(([adId, a]) => {
     const spend = a.perf?.spend ?? 0;
     const cpl = a.leads > 0 ? spend / a.leads : null;
     const cac = a.vendas > 0 ? spend / a.vendas : null;
     const roas = spend > 0 ? a.fat / spend : null;
     return { adId, a, spend, cpl, cac, roas, cr: creatives.get(adId) ?? null };
   });
+  // cliente só vê anúncios que geraram leads dele (não a conta inteira da Amplia)
+  if (!seesAll) rows = rows.filter((r) => r.a.leads > 0);
   rows.sort((x, y) => y.spend - x.spend);
 
   // alertas/recomendação
@@ -96,15 +102,17 @@ export default async function Anuncios({ searchParams }: { searchParams: Promise
       <div className="relative z-10 mx-auto max-w-7xl px-6 py-6">
         {/* saldo + totais */}
         <section className="grid gap-3 sm:grid-cols-4">
-          <div className={`card p-4 ${saldoBaixo ? "!border-st-perd/50" : "!border-signal/30"}`}>
-            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-faint">
-              {saldoBaixo && <IconWarn size={12} className="text-st-perd" />} Saldo da conta
-            </span>
-            <div className={`num mt-1 text-2xl font-bold ${saldoBaixo ? "text-st-perd" : "text-signal"}`}>
-              {finance?.balanceValue != null ? brl.format(finance.balanceValue) : "—"}
+          {seesAll && (
+            <div className={`card p-4 ${saldoBaixo ? "!border-st-perd/50" : "!border-signal/30"}`}>
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-faint">
+                {saldoBaixo && <IconWarn size={12} className="text-st-perd" />} Saldo da conta
+              </span>
+              <div className={`num mt-1 text-2xl font-bold ${saldoBaixo ? "text-st-perd" : "text-signal"}`}>
+                {finance?.balanceValue != null ? brl.format(finance.balanceValue) : "—"}
+              </div>
+              {saldoBaixo && <div className="mt-0.5 text-xs text-st-perd">saldo baixo — recarregue</div>}
             </div>
-            {saldoBaixo && <div className="mt-0.5 text-xs text-st-perd">saldo baixo — recarregue</div>}
-          </div>
+          )}
           <div className="card p-4">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-faint">Gasto ({PERIODS[period].label})</span>
             <div className="num mt-1 text-2xl font-bold">{brl.format(totalSpend)}</div>

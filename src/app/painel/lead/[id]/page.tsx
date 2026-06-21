@@ -23,6 +23,7 @@ import {
 } from "@/components/icons";
 import { AdSourceCard } from "@/components/ad-source-card";
 import { getAdCreative } from "@/lib/meta-ads";
+import { getScope } from "@/lib/auth";
 import { Chat } from "./chat";
 
 export const dynamic = "force-dynamic";
@@ -37,13 +38,14 @@ type Msg = { id: string; direction: "in" | "out"; content: string | null; create
 export default async function LeadConversa({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const sb = supabaseAdmin();
+  const { org, seesAll } = await getScope();
 
   // 3 queries em paralelo (usando o id direto) — sem esperar o lead pra buscar o resto
   const [{ data: lead }, { data: msgs }, { data: events }, { data: notesData }] = await Promise.all([
     sb
       .from("leads")
       .select(
-        "id, phone, name, stage, value, code, attributed_via, created_at, scheduled_at, scheduled_note, tags, clicks(utm_source, utm_campaign, utm_content, ad_id, ctwa_clid, fbclid)",
+        "id, phone, name, stage, value, code, attributed_via, created_at, scheduled_at, scheduled_note, tags, org_id, clicks(utm_source, utm_campaign, utm_content, ad_id, ctwa_clid, fbclid)",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -60,6 +62,8 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
       .order("created_at", { ascending: false }),
   ]);
   if (!lead) notFound();
+  // cliente não pode abrir lead de outra org (Amplia vê tudo)
+  if (!seesAll && (lead as { org_id?: string }).org_id !== org) notFound();
   const tags = ((lead.tags as string[] | null) ?? []) as string[];
   const notes = (notesData ?? []) as { id: string; body: string; created_at: string }[];
 

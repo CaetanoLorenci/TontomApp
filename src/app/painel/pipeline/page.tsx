@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAdCreatives } from "@/lib/meta-ads";
 import { Board, type PipelineCard } from "./board";
+import { getScope } from "@/lib/auth";
 import { LogoMark, IconCalendar, IconFunnel, IconChat, IconBroadcast } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -19,10 +20,13 @@ type Row = {
 
 export default async function Pipeline() {
   const sb = supabaseAdmin();
-  const { data } = await sb
+  const { org, seesAll } = await getScope();
+  let q = sb
     .from("leads")
     .select("id, name, stage, value, scheduled_at, clicks(utm_campaign, ad_id)")
     .order("created_at", { ascending: false });
+  if (!seesAll) q = q.eq("org_id", org);
+  const { data } = await q;
 
   const leads = (data ?? []) as unknown as Row[];
   const creativeMap = await getAdCreatives(sb, leads.map((l) => l.clicks?.ad_id));

@@ -35,3 +35,12 @@ export async function requireUser(): Promise<SessionUser> {
   if (!u) redirect("/login");
   return u;
 }
+
+// Escopo de leitura: Amplia (org 'amplia') vê TUDO; cliente vê só a org dele.
+// Sem sessão (acesso via Basic Auth na transição) = tratado como Amplia.
+export type Scope = { org: string; seesAll: boolean; email: string | null };
+export async function getScope(): Promise<Scope> {
+  const u = await getSessionUser();
+  if (!u) return { org: "amplia", seesAll: true, email: null };
+  return { org: u.org, seesAll: u.org === "amplia", email: u.email };
+}

@@ -9,6 +9,7 @@ import {
   brDayKey,
 } from "@/lib/format";
 import { monthGrid, googleCalUrl } from "@/lib/calendar";
+import { getScope } from "@/lib/auth";
 import {
   LogoMark,
   IconCalendar,
@@ -59,6 +60,7 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<{
   const isMes = view === "mes";
   const sb = supabaseAdmin();
   const todayKey = brDayKey(new Date());
+  const { org, seesAll } = await getScope();
 
   return (
     <main className="relative min-h-screen">
@@ -110,7 +112,9 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<{
           </Link>
         </div>
 
-        {isMes ? await MesView({ sb, m, todayKey }) : await ListaView({ sb, todayKey })}
+        {isMes
+          ? await MesView({ sb, m, todayKey, org, seesAll })
+          : await ListaView({ sb, todayKey, org, seesAll })}
       </div>
     </main>
   );
@@ -121,10 +125,14 @@ async function MesView({
   sb,
   m,
   todayKey,
+  org,
+  seesAll,
 }: {
   sb: ReturnType<typeof supabaseAdmin>;
   m?: string;
   todayKey: string;
+  org: string;
+  seesAll: boolean;
 }) {
   const anchor = m && /^\d{4}-\d{2}$/.test(m) ? m : todayKey.slice(0, 7);
   const [year, month1] = anchor.split("-").map(Number);
@@ -132,7 +140,7 @@ async function MesView({
 
   const startIso = new Date(`${grid.days[0].key}T00:00:00-03:00`).toISOString();
   const endIso = new Date(`${grid.days[41].key}T23:59:59-03:00`).toISOString();
-  const { data } = await sb
+  let q = sb
     .from("leads")
     .select("id, phone, name, stage, scheduled_at, scheduled_note, clicks(utm_campaign)")
     .eq("stage", "agendado")
@@ -140,6 +148,8 @@ async function MesView({
     .gte("scheduled_at", startIso)
     .lte("scheduled_at", endIso)
     .order("scheduled_at", { ascending: true });
+  if (!seesAll) q = q.eq("org_id", org);
+  const { data } = await q;
 
   const appts = (data ?? []) as unknown as Lead[];
   const byDay = new Map<string, Lead[]>();
@@ -214,16 +224,22 @@ async function MesView({
 async function ListaView({
   sb,
   todayKey,
+  org,
+  seesAll,
 }: {
   sb: ReturnType<typeof supabaseAdmin>;
   todayKey: string;
+  org: string;
+  seesAll: boolean;
 }) {
-  const { data } = await sb
+  let q = sb
     .from("leads")
     .select("id, phone, name, stage, scheduled_at, scheduled_note, clicks(utm_campaign)")
     .eq("stage", "agendado")
     .not("scheduled_at", "is", null)
     .order("scheduled_at", { ascending: true });
+  if (!seesAll) q = q.eq("org_id", org);
+  const { data } = await q;
 
   const leads = (data ?? []) as unknown as Lead[];
   const tomorrowKey = brDayKey(new Date(Date.now() + 86_400_000));
