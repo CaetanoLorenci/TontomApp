@@ -303,6 +303,65 @@ export async function createClientRequest(
   return { ok: true, msg: "Enviado! A Amplia vai ver por aqui." };
 }
 
+// Gera uma URL assinada pra subir UM arquivo direto pro Storage (bypassa o limite
+// de body das server actions → aguenta vídeo). O cliente faz uploadToSignedUrl com o token.
+export async function createUploadUrl(
+  filename: string,
+  _mime: string,
+): Promise<{ ok: boolean; path?: string; token?: string; error?: string }> {
+  const scope = await getScope();
+  const safe = (filename || "arquivo").replace(/[^a-zA-Z0-9._-]/g, "_").slice(-60);
+  const path = `${scope.org}/${crypto.randomUUID()}-${safe}`;
+  const { data, error } = await supabaseAdmin().storage.from("client-uploads").createSignedUploadUrl(path);
+  if (error || !data) return { ok: false, error: error?.message ?? "Falha ao preparar upload." };
+  return { ok: true, path: data.path, token: data.token };
+}
+
+// Cria um pedido COM arquivos já enviados (criativos). Usado pelo composer da Central.
+export async function createRequestRich(input: {
+  kind: string;
+  body: string;
+  files: { path: string; name?: string; mime?: string }[];
+}): Promise<{ ok: boolean; msg: string }> {
+  const scope = await getScope();
+  const u = await getSessionUser();
+  const body = (input.body ?? "").trim();
+  const kind = (REQUEST_KINDS as readonly string[]).includes(input.kind) ? input.kind : "geral";
+  const files = (input.files ?? []).slice(0, 20);
+  if (!body && files.length === 0) return { ok: false, msg: "Escreva algo ou anexe um arquivo." };
+
+  const sb = supabaseAdmin();
+  const { data: req, error } = await sb
+    .from("client_requests")
+    .insert({ org_id: scope.org, kind, body: (body || "(criativos anexados)").slice(0, 2000), created_by: u?.id ?? null })
+    .select("id")
+    .single();
+  if (error || !req) return { ok: false, msg: "Não foi possível enviar. Tente de novo." };
+
+  if (files.length) {
+    await sb.from("request_files").insert(
+      files.map((f) => ({
+        request_id: req.id,
+        org_id: scope.org,
+        path: f.path,
+        name: f.name?.slice(0, 200) ?? null,
+        mime: f.mime ?? null,
+      })),
+    );
+  }
+
+  if (scope.org !== "amplia") {
+    await sendPushToOrgs(["amplia"], {
+      title: `📥 ${KIND_LABEL[kind]} · ${scope.org}`,
+      body: (body || `${files.length} criativo(s) enviado(s)`).slice(0, 80),
+      url: "/painel/central",
+      tag: "pedido",
+    });
+  }
+  revalidatePath("/painel/central");
+  return { ok: true, msg: "Enviado! A Amplia vai ver por aqui." };
+}
+
 // Amplia muda o status de um pedido e notifica o cliente.
 export async function setRequestStatus(formData: FormData) {
   const { seesAll } = await getScope();

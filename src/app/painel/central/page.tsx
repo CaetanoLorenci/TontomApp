@@ -41,6 +41,28 @@ export default async function Central() {
     for (const o of orgs ?? []) orgNames.set((o as { slug: string }).slug, (o as { name: string }).name);
   }
 
+  // anexos (criativos) por pedido + URLs assinadas (bucket privado)
+  type FileRow = { request_id: string; path: string; name: string | null; mime: string | null; url: string | null };
+  const filesByReq = new Map<string, FileRow[]>();
+  const reqIds = reqs.map((r) => r.id);
+  if (reqIds.length) {
+    const { data: fileRows } = await sb
+      .from("request_files")
+      .select("request_id, path, name, mime")
+      .in("request_id", reqIds);
+    const paths = (fileRows ?? []).map((f) => (f as { path: string }).path);
+    const urlByPath = new Map<string, string>();
+    if (paths.length) {
+      const { data: signed } = await sb.storage.from("client-uploads").createSignedUrls(paths, 3600);
+      for (const s of signed ?? []) if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl);
+    }
+    for (const f of (fileRows ?? []) as Omit<FileRow, "url">[]) {
+      const arr = filesByReq.get(f.request_id) ?? [];
+      arr.push({ ...f, url: urlByPath.get(f.path) ?? null });
+      filesByReq.set(f.request_id, arr);
+    }
+  }
+
   return (
     <main className="relative min-h-screen">
       <div className="atmosphere" />
@@ -94,6 +116,33 @@ export default async function Central() {
                 </div>
 
                 <p className="mt-2 whitespace-pre-wrap text-sm text-snow">{r.body}</p>
+
+                {(filesByReq.get(r.id)?.length ?? 0) > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {filesByReq.get(r.id)!.map((f, i) =>
+                      f.mime?.startsWith("image/") && f.url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <a key={i} href={f.url} target="_blank" rel="noreferrer" title={f.name ?? ""}>
+                          <img
+                            src={f.url}
+                            alt={f.name ?? ""}
+                            className="h-24 w-24 rounded-lg border border-line object-cover transition-transform hover:scale-105"
+                          />
+                        </a>
+                      ) : (
+                        <a
+                          key={i}
+                          href={f.url ?? "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 rounded-lg border border-line bg-pane2 px-3 py-2 text-xs text-mist transition-colors hover:text-signal"
+                        >
+                          📎 {f.name ?? "arquivo"}
+                        </a>
+                      ),
+                    )}
+                  </div>
+                )}
 
                 {seesAll && (
                   <form action={setRequestStatus} className="mt-3 flex items-center gap-1.5">
