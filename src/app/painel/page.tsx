@@ -25,7 +25,7 @@ import { PanelNav } from "@/components/panel-nav";
 export const dynamic = "force-dynamic";
 
 /* ════════════════════════════════════════════════════════════
-   Painel Tontom — sonar de conversas.
+   Painel Amplia Hub — sonar de conversas.
    Estrutura espelha o TinTim (métricas do período, origens,
    funil, conversas) com identidade própria + status CAPI.
    ════════════════════════════════════════════════════════════ */

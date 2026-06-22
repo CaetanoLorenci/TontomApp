@@ -29,7 +29,7 @@ import { Chat } from "./chat";
 export const dynamic = "force-dynamic";
 
 /* ════════════════════════════════════════════════════════════
-   Conversa do lead — o chat inteiro dentro do Tontom.
+   Conversa do lead — o chat inteiro dentro do Amplia Hub.
    Bolhas in/out, origem do anúncio, eventos CAPI e ações.
    ════════════════════════════════════════════════════════════ */
 

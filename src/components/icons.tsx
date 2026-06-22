@@ -1,4 +1,4 @@
-// Iconografia Tontom — desenhada em código, grid 24, stroke 1.6, herda currentColor.
+// Iconografia Amplia Hub — desenhada em código, grid 24, stroke 1.6, herda currentColor.
 // Zero emoji. Consistência > variedade.
 
 type IconProps = { size?: number; className?: string };

@@ -9,7 +9,7 @@ import { IconWarn, IconSale, IconTrend, IconBroadcast } from "@/components/icons
 export const dynamic = "force-dynamic";
 
 /* Anúncios — central de comando: cruza gasto/conversas do Meta (ads_read) com
-   leads/vendas/faturamento do Tontom → ROI real por anúncio. Saldo + alertas. */
+   leads/vendas/faturamento do Amplia Hub → ROI real por anúncio. Saldo + alertas. */
 
 const PERIODS: Record<string, { label: string; preset: string; days: number }> = {
   "7d": { label: "7d", preset: "last_7d", days: 7 },
@@ -34,7 +34,7 @@ export default async function Anuncios({ searchParams }: { searchParams: Promise
     leadsQ,
   ]);
 
-  // une por ad_id: performance do Meta + resultados do Tontom
+  // une por ad_id: performance do Meta + resultados do Amplia Hub
   const map = new Map<string, Agg>();
   const get = (id: string) => map.get(id) ?? map.set(id, { leads: 0, agendados: 0, vendas: 0, fat: 0 }).get(id)!;
   for (const r of perf) if (r.adId) get(r.adId).perf = r;
@@ -189,7 +189,7 @@ export default async function Anuncios({ searchParams }: { searchParams: Promise
 
         <p className="mt-3 text-xs text-faint">
           <IconSale size={12} className="mr-1 inline text-signal" />
-          ROI real = gasto do Meta cruzado com vendas do Tontom · <span className="text-st-perd">CPL ⚠</span> = bem acima da média · <span className="text-signal">melhor ROI</span> = recomendação de verba · gasto/conversas dos últimos {PERIODS[period].label}.
+          ROI real = gasto do Meta cruzado com vendas do Amplia Hub · <span className="text-st-perd">CPL ⚠</span> = bem acima da média · <span className="text-signal">melhor ROI</span> = recomendação de verba · gasto/conversas dos últimos {PERIODS[period].label}.
         </p>
       </div>
     </main>
