@@ -262,6 +262,75 @@ export async function sendTestPush(): Promise<{ ok: boolean; sent: number }> {
   return { ok: sent > 0, sent };
 }
 
+// ── Central do Cliente: pedidos / sugestões ─────────────────
+const REQUEST_KINDS = ["geral", "anuncio", "app"] as const;
+const KIND_LABEL: Record<string, string> = {
+  geral: "Geral",
+  anuncio: "Pedido de anúncio",
+  app: "Feedback do app",
+};
+
+// Cliente (ou Amplia) cria um pedido/sugestão na org dele. Notifica a Amplia por push.
+export async function createClientRequest(
+  _prev: { ok: boolean; msg: string } | null,
+  formData: FormData,
+): Promise<{ ok: boolean; msg: string }> {
+  const scope = await getScope();
+  const u = await getSessionUser();
+  const body = String(formData.get("body") ?? "").trim();
+  const kindRaw = String(formData.get("kind") ?? "geral");
+  const kind = (REQUEST_KINDS as readonly string[]).includes(kindRaw) ? kindRaw : "geral";
+  if (!body) return { ok: false, msg: "Escreva sua mensagem." };
+
+  const { error } = await supabaseAdmin().from("client_requests").insert({
+    org_id: scope.org,
+    kind,
+    body: body.slice(0, 2000),
+    created_by: u?.id ?? null,
+  });
+  if (error) return { ok: false, msg: "Não foi possível enviar. Tente de novo." };
+
+  // avisa a Amplia (só quando o autor é um cliente, não a própria Amplia)
+  if (scope.org !== "amplia") {
+    await sendPushToOrgs(["amplia"], {
+      title: `📥 ${KIND_LABEL[kind]} · ${scope.org}`,
+      body: body.length > 80 ? body.slice(0, 80) + "…" : body,
+      url: "/painel/central",
+      tag: "pedido",
+    });
+  }
+  revalidatePath("/painel/central");
+  return { ok: true, msg: "Enviado! A Amplia vai ver por aqui." };
+}
+
+// Amplia muda o status de um pedido e notifica o cliente.
+export async function setRequestStatus(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const id = String(formData.get("id") ?? "");
+  const status = String(formData.get("status") ?? "");
+  if (!id || !["aberto", "andamento", "feito"].includes(status)) return;
+
+  const sb = supabaseAdmin();
+  const { data: reqRow } = await sb.from("client_requests").select("org_id").eq("id", id).maybeSingle();
+  await sb
+    .from("client_requests")
+    .update({ status, resolved_at: status === "feito" ? new Date().toISOString() : null })
+    .eq("id", id);
+
+  const org = (reqRow as { org_id?: string } | null)?.org_id;
+  if (org && org !== "amplia") {
+    const label = status === "feito" ? "concluído ✅" : status === "andamento" ? "em andamento 🛠️" : "reaberto";
+    await sendPushToOrgs([org], {
+      title: "Atualização do seu pedido",
+      body: `Seu pedido está ${label}.`,
+      url: "/painel/central",
+      tag: "pedido-status",
+    });
+  }
+  revalidatePath("/painel/central");
+}
+
 // ── Ficha do contato (CRM) ──────────────────────────────────
 export async function addNote(formData: FormData) {
   const leadId = String(formData.get("leadId") ?? "");
