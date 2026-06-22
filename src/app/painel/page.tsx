@@ -189,11 +189,15 @@ function ActivityChart({ series }: { series: { label: string; count: number }[] 
 export default async function Painel({
   searchParams,
 }: {
-  searchParams: Promise<{ p?: string }>;
+  searchParams: Promise<{ p?: string; q?: string; stage?: string }>;
 }) {
-  const { p } = await searchParams;
+  const { p, q, stage } = await searchParams;
   const period = PERIODS[p ?? "30d"] ? (p ?? "30d") : "30d";
   const since = periodStart(PERIODS[period].days);
+  const query = (q ?? "").trim();
+  const stageFilter = ["novo", "qualificado", "agendado", "vendido", "perdido"].includes(stage ?? "")
+    ? (stage as string)
+    : null;
 
   const sb = supabaseAdmin();
   const { org, seesAll } = await getScope();
@@ -213,6 +217,19 @@ export default async function Painel({
   const [{ data, error }, { data: events }] = await Promise.all([leadsQuery, eventsQuery]);
 
   const leads = (data ?? []) as unknown as LeadRow[];
+
+  // busca (nome/telefone) + filtro de estágio — só na LISTA (métricas seguem o período inteiro)
+  const qLower = query.toLowerCase();
+  const displayLeads = leads.filter((l) => {
+    if (stageFilter && l.stage !== stageFilter) return false;
+    if (qLower) {
+      const hay = `${l.name ?? ""} ${l.phone}`.toLowerCase();
+      if (!hay.includes(qLower)) return false;
+    }
+    return true;
+  });
+  const filtering = !!query || !!stageFilter;
+
   const creativeMap = await getAdCreatives(sb, leads.map((l) => l.clicks?.ad_id));
   const capiByLead = new Map<string, string[]>();
   for (const e of events ?? []) {
@@ -432,10 +449,52 @@ export default async function Painel({
 
         {/* ── conversas ── */}
         <section className="mt-6">
-          <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-faint">
-            <IconChat size={14} />
-            Conversas
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-faint">
+              <IconChat size={14} />
+              Conversas
+              {filtering && (
+                <span className="text-faint normal-case tracking-normal">
+                  · {displayLeads.length} de {leads.length}
+                </span>
+              )}
+            </h2>
+
+            {/* busca + filtro de estágio (GET, preserva o período) */}
+            <form method="get" action="/painel" className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="p" value={period} />
+              <input
+                name="q"
+                defaultValue={query}
+                placeholder="Buscar nome ou telefone…"
+                className="w-48 rounded-xl border border-line bg-pane px-3 py-1.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+              />
+              <select
+                name="stage"
+                defaultValue={stageFilter ?? ""}
+                style={{ colorScheme: "dark" }}
+                className="rounded-xl border border-line bg-pane px-2 py-1.5 text-sm focus:border-signal/60 focus:outline-none"
+              >
+                <option value="">Todos os estágios</option>
+                <option value="novo">Novo</option>
+                <option value="qualificado">Qualificado</option>
+                <option value="agendado">Agendado</option>
+                <option value="vendido">Vendido</option>
+                <option value="perdido">Perdido</option>
+              </select>
+              <button
+                type="submit"
+                className="rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
+              >
+                Filtrar
+              </button>
+              {filtering && (
+                <a href={`/painel?p=${period}`} className="text-xs text-faint underline transition-colors hover:text-snow">
+                  limpar
+                </a>
+              )}
+            </form>
+          </div>
 
           {error && (
             <p className="mt-3 rounded-xl border border-st-perd/40 bg-st-perd/10 p-3 text-sm text-st-perd">
@@ -452,9 +511,13 @@ export default async function Painel({
                 simular um clique de anúncio.
               </p>
             </div>
+          ) : displayLeads.length === 0 ? (
+            <div className="card mt-3 border-dashed p-8 text-center text-sm text-faint">
+              Nenhuma conversa pra essa busca/filtro. <a href={`/painel?p=${period}`} className="text-signal underline">limpar</a>
+            </div>
           ) : (
             <ul className="mt-3 space-y-3">
-              {leads.map((l, i) => {
+              {displayLeads.map((l, i) => {
                 const meta = STAGE[l.stage] ?? STAGE.novo;
                 const capi = capiByLead.get(l.id) ?? [];
                 const cr = l.clicks?.ad_id ? (creativeMap.get(l.clicks.ad_id) ?? null) : null;
