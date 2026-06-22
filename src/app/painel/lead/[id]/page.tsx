@@ -33,7 +33,7 @@ export const dynamic = "force-dynamic";
    Bolhas in/out, origem do anúncio, eventos CAPI e ações.
    ════════════════════════════════════════════════════════════ */
 
-type Msg = { id: string; direction: "in" | "out"; content: string | null; created_at: string };
+type Msg = { id: string; direction: "in" | "out"; content: string | null; created_at: string; status?: string | null };
 
 export default async function LeadConversa({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -51,7 +51,7 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
       .maybeSingle(),
     sb
       .from("messages")
-      .select("id, direction, content, created_at")
+      .select("id, direction, content, created_at, status")
       .eq("lead_id", id)
       .order("created_at", { ascending: true }),
     sb.from("capi_events").select("event_name, created_at, response").eq("lead_id", id),

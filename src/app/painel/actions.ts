@@ -58,7 +58,16 @@ export async function replyToLead(formData: FormData): Promise<ReplyResult> {
   try {
     const res = await sendCloudText(lead.phone, text);
     if (res.ok) {
-      await sb.from("messages").insert({ lead_id: leadId, phone: lead.phone, direction: "out", content: text });
+      const wamid = (res.body as { messages?: { id?: string }[] })?.messages?.[0]?.id ?? null;
+      await sb.from("messages").insert({
+        lead_id: leadId,
+        phone: lead.phone,
+        direction: "out",
+        content: text,
+        zapi_message_id: wamid, // p/ casar com os recibos (entregue/lido) do webhook
+        status: "sent",
+        status_at: new Date().toISOString(),
+      });
       revalidatePath(`/painel/lead/${leadId}`);
       return { ok: true };
     }

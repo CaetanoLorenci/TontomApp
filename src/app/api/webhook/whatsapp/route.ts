@@ -72,6 +72,36 @@ async function handleValue(sb: SB, value: CloudValue | undefined) {
   for (const m of value.message_echoes ?? []) {
     await handleEcho(sb, m);
   }
+
+  // recibos (sent/delivered/read/failed) das mensagens que NÓS enviamos
+  for (const st of value.statuses ?? []) {
+    await handleStatus(sb, st as WaStatus);
+  }
+}
+
+/* ── recibo de entrega/leitura: atualiza a mensagem pelo wamid ── */
+type WaStatus = { id?: string; status?: string; timestamp?: string };
+const STATUS_RANK: Record<string, number> = { sent: 1, delivered: 2, read: 3 };
+
+async function handleStatus(sb: SB, st: WaStatus) {
+  const wamid = st.id;
+  const status = st.status;
+  if (!wamid || !status) return;
+
+  const { data: msg } = await sb
+    .from("messages")
+    .select("id, status")
+    .eq("zapi_message_id", wamid)
+    .maybeSingle();
+  if (!msg) return;
+
+  // não regride (read não vira delivered); failed sempre vence
+  const cur = STATUS_RANK[msg.status ?? ""] ?? 0;
+  const next = STATUS_RANK[status] ?? 0;
+  if (status !== "failed" && next <= cur) return;
+
+  const at = st.timestamp ? new Date(Number(st.timestamp) * 1000).toISOString() : new Date().toISOString();
+  await sb.from("messages").update({ status, status_at: at }).eq("id", msg.id);
 }
 
 /* ── mensagem do LEAD: cria/atribui (CTWA nativo) + salva ── */

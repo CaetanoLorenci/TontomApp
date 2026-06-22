@@ -11,8 +11,17 @@ type Msg = {
   direction: "in" | "out";
   content: string | null;
   created_at: string;
+  status?: string | null;
   pending?: boolean;
 };
+
+// Recibo do WhatsApp pras mensagens que enviamos (✓ enviado, ✓✓ entregue, ✓✓ azul lido).
+function Ticks({ status }: { status?: string | null }) {
+  if (status === "failed") return <span className="text-st-perd">· falhou ✕</span>;
+  if (status === "read") return <span className="text-st-qual" title="Lido">✓✓</span>;
+  if (status === "delivered") return <span title="Entregue">✓✓</span>;
+  return <span title="Enviado">✓</span>; // sent ou sem status ainda
+}
 
 // Chat com resposta OTIMISTA: a mensagem aparece na hora, o envio roda em
 // segundo plano. Sem esperar o round-trip do WhatsApp + recarregamento.
@@ -86,11 +95,11 @@ export function Chat({ leadId, messages }: { leadId: string; messages: Msg[] }) 
                         <p className="whitespace-pre-wrap break-words">
                           {m.content ? stripInvisible(m.content) : <span className="italic text-faint">(mídia/sem texto)</span>}
                         </p>
-                        <p className={`num mt-1 text-[10px] ${m.direction === "out" ? "text-signal/70" : "text-faint"}`}>
+                        <p className={`num mt-1 flex items-center gap-1 text-[10px] ${m.direction === "out" ? "justify-end text-signal/70" : "text-faint"}`}>
                           {m.pending
                             ? "enviando…"
                             : new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                          {m.direction === "out" && !m.pending ? " · Amplia" : ""}
+                          {m.direction === "out" && !m.pending && <Ticks status={m.status} />}
                         </p>
                       </div>
                     </div>
