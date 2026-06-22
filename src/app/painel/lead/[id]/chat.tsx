@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useRef, useEffect } from "react";
+import { useOptimistic, useRef, useEffect, useState } from "react";
 import { replyToLead } from "../../actions";
 import { stripInvisible } from "@/lib/code";
 import { formatDay } from "@/lib/format";
@@ -19,7 +19,9 @@ type Msg = {
 export function Chat({ leadId, messages }: { leadId: string; messages: Msg[] }) {
   const [optimistic, addOptimistic] = useOptimistic<Msg[], Msg>(messages, (state, m) => [...state, m]);
   const formRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -28,6 +30,7 @@ export function Chat({ leadId, messages }: { leadId: string; messages: Msg[] }) 
   async function send(formData: FormData) {
     const text = String(formData.get("text") ?? "").trim();
     if (!text) return;
+    setError(null);
     formRef.current?.reset();
     // timestamp/id num event handler (fora do render) é permitido
     addOptimistic({
@@ -37,7 +40,12 @@ export function Chat({ leadId, messages }: { leadId: string; messages: Msg[] }) 
       created_at: new Date().toISOString(),
       pending: true,
     });
-    await replyToLead(formData);
+    const res = await replyToLead(formData);
+    if (res && res.ok === false) {
+      // não enviou: avisa e devolve o texto pro campo pra não perder
+      setError(res.error ?? "Não foi possível enviar.");
+      if (inputRef.current) inputRef.current.value = text;
+    }
   }
 
   const byDay: { day: string; items: Msg[] }[] = [];
@@ -99,6 +107,7 @@ export function Chat({ leadId, messages }: { leadId: string; messages: Msg[] }) 
         <form ref={formRef} action={send} className="flex items-center gap-2">
           <input type="hidden" name="leadId" value={leadId} readOnly />
           <input
+            ref={inputRef}
             name="text"
             autoComplete="off"
             placeholder="Responder pelo WhatsApp…"
@@ -112,6 +121,11 @@ export function Chat({ leadId, messages }: { leadId: string; messages: Msg[] }) 
             Enviar
           </button>
         </form>
+        {error && (
+          <p className="mt-2 rounded-xl border border-st-perd/40 bg-st-perd/10 px-3 py-2 text-xs text-st-perd">
+            {error}
+          </p>
+        )}
         <p className="mt-1.5 px-1 text-[10px] text-faint">
           Envia pelo WhatsApp oficial. Funciona na janela de 24h após a última mensagem do lead.
         </p>

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getScope } from "@/lib/auth";
 import { createOrg, inviteToOrg } from "../actions";
-import { LogoMark, IconChat, IconFunnel, IconCalendar, IconBroadcast, IconTarget } from "@/components/icons";
+import { PanelNav } from "@/components/panel-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -39,22 +39,7 @@ export default async function Clientes() {
     <main className="relative min-h-screen">
       <div className="atmosphere" />
 
-      <header className="sticky top-0 z-20 border-b border-line bg-ink/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-6 py-3">
-          <Link href="/painel" className="flex items-center gap-2.5">
-            <LogoMark size={26} />
-            <span className="font-head text-lg font-extrabold tracking-tight">Amplia <span className="text-signal">Hub</span></span>
-          </Link>
-          <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">
-            <Link href="/painel" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow"><IconChat size={14} /> Painel</Link>
-            <Link href="/painel/pipeline" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow"><IconFunnel size={14} /> Pipeline</Link>
-            <Link href="/painel/agenda" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow"><IconCalendar size={14} /> Agenda</Link>
-            <Link href="/painel/anuncios" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow"><IconBroadcast size={14} /> Anúncios</Link>
-            <span className="flex items-center gap-1.5 rounded-lg bg-signal-soft px-3 py-1.5 font-semibold text-signal"><IconTarget size={14} /> Clientes</span>
-            <Link href="/painel/acesso" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">Acesso</Link>
-          </nav>
-        </div>
-      </header>
+      <PanelNav active="clientes" seesAll={seesAll} />
 
       <div className="relative z-10 mx-auto max-w-4xl px-6 py-8">
         {/* criar cliente */}

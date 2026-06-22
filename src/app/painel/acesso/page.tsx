@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getScope } from "@/lib/auth";
 import { AccessForm } from "./access-form";
-import { LogoMark, IconChat, IconFunnel, IconCalendar, IconBroadcast, IconTarget } from "@/components/icons";
+import { PanelNav } from "@/components/panel-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -26,19 +26,7 @@ export default async function Acesso() {
     <main className="relative min-h-screen">
       <div className="atmosphere" />
 
-      <header className="sticky top-0 z-20 border-b border-line bg-ink/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-6 py-3">
-          <Link href="/painel" className="flex items-center gap-2.5">
-            <LogoMark size={26} />
-            <span className="font-head text-lg font-extrabold tracking-tight">Amplia <span className="text-signal">Hub</span></span>
-          </Link>
-          <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">
-            <Link href="/painel" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow"><IconChat size={14} /> Painel</Link>
-            <Link href="/painel/clientes" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow"><IconTarget size={14} /> Clientes</Link>
-            <span className="flex items-center gap-1.5 rounded-lg bg-signal-soft px-3 py-1.5 font-semibold text-signal">Acesso</span>
-          </nav>
-        </div>
-      </header>
+      <PanelNav active="acesso" seesAll={seesAll} />
 
       <div className="relative z-10 mx-auto max-w-2xl px-6 py-8">
         <h1 className="font-head text-2xl font-extrabold tracking-tight">Definir acesso</h1>

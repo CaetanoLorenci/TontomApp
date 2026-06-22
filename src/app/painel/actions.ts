@@ -23,28 +23,54 @@ function revalidateLead(leadId: string) {
   revalidatePath(`/painel/lead/${leadId}`);
 }
 
+export type ReplyResult = { ok: boolean; error?: string };
+
+// Traduz o erro da Cloud API pra algo acionável pro time.
+function friendlyCloudError(body: unknown): string {
+  const err = (body as { error?: { code?: number; message?: string; error_data?: { details?: string } } })?.error;
+  const code = err?.code;
+  const msg = err?.message ?? "";
+  if (code === 131047 || /24 hours|reengagement|re-engagement/i.test(msg)) {
+    return "Fora da janela de 24h: o lead precisa te mandar uma mensagem antes de você responder em texto livre (ou use um template aprovado).";
+  }
+  if (code === 190 || /access token|expired|OAuth/i.test(msg)) {
+    return "Token do WhatsApp inválido/expirado — precisa reconectar o número.";
+  }
+  if (code === 131026 || /not.*opted in|undeliverable/i.test(msg)) {
+    return "Mensagem não pôde ser entregue (número não disponível no WhatsApp ou não optou por receber).";
+  }
+  return err?.error_data?.details || msg || "Não foi possível enviar pelo WhatsApp.";
+}
+
 // Responde o lead pelo WhatsApp oficial (Cloud API), direto do painel.
 // Válido dentro da janela de 24h (lead mandou) / 72h (CTWA). Fora disso, exige template.
-export async function replyToLead(formData: FormData) {
+// Retorna {ok,error} pra UI mostrar a falha (antes era silencioso).
+export async function replyToLead(formData: FormData): Promise<ReplyResult> {
   const leadId = String(formData.get("leadId") ?? "");
   const text = String(formData.get("text") ?? "").trim();
-  if (!leadId || !text) return;
+  if (!leadId || !text) return { ok: false, error: "Mensagem vazia." };
 
   const sb = supabaseAdmin();
   const { data: lead } = await sb.from("leads").select("phone").eq("id", leadId).maybeSingle();
-  if (!lead?.phone) return;
+  if (!lead?.phone) return { ok: false, error: "Lead sem telefone registrado." };
 
   try {
     const res = await sendCloudText(lead.phone, text);
     if (res.ok) {
       await sb.from("messages").insert({ lead_id: leadId, phone: lead.phone, direction: "out", content: text });
-    } else {
-      console.error("[reply] envio Cloud API falhou:", JSON.stringify(res.body));
+      revalidatePath(`/painel/lead/${leadId}`);
+      return { ok: true };
     }
+    console.error("[reply] envio Cloud API falhou:", JSON.stringify(res.body));
+    return { ok: false, error: friendlyCloudError(res.body) };
   } catch (e) {
     console.error("[reply] erro:", e);
+    const m = e instanceof Error ? e.message : "";
+    if (/WHATSAPP_PHONE_NUMBER_ID|WHATSAPP_ACCESS_TOKEN/.test(m)) {
+      return { ok: false, error: "Configuração do WhatsApp ausente no servidor (token/phone id)." };
+    }
+    return { ok: false, error: "Erro de rede ao falar com o WhatsApp. Tente de novo." };
   }
-  revalidatePath(`/painel/lead/${leadId}`);
 }
 
 // Atualiza estágio/valor de um lead e, se for o caso, dispara o evento pro Meta (CAPI).

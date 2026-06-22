@@ -20,6 +20,7 @@ import { formatSchedule, isoToBrLocalInput } from "@/lib/format";
 import { ScheduleButton } from "./schedule-button";
 import { getAdCreatives } from "@/lib/meta-ads";
 import { getScope } from "@/lib/auth";
+import { PanelNav } from "@/components/panel-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -270,70 +271,18 @@ export default async function Painel({
       <div className="atmosphere" />
 
       {/* ── topo ── */}
-      <header className="sticky top-0 z-20 border-b border-line bg-ink/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="relative flex h-8 w-8 items-center justify-center">
-              <span className="sonar-ring absolute inset-0 rounded-full border border-signal/60" />
-              <span className="sonar-ring-2 absolute inset-0 rounded-full border border-signal/40" />
-              <LogoMark size={26} />
-            </span>
-            <span className="font-head text-lg font-extrabold tracking-tight">
-              Amplia <span className="text-signal">Hub</span>
-            </span>
-            <span className="ml-1 rounded-full bg-signal-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-signal">
-              Amplia
-            </span>
-          </Link>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/painel/pipeline"
-              className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
-            >
-              <IconFunnel size={15} />
-              Pipeline
-            </Link>
-            <Link
-              href="/painel/agenda"
-              className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
-            >
-              <IconCalendar size={15} />
-              Agenda
-            </Link>
-            <Link
-              href="/painel/anuncios"
-              className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
-            >
-              <IconBroadcast size={15} />
-              Anúncios
-            </Link>
-            {seesAll && (
-              <>
-                <Link
-                  href="/painel/clientes"
-                  className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
-                >
-                  <IconTarget size={15} />
-                  Clientes
-                </Link>
-                <Link
-                  href="/painel/acesso"
-                  className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
-                >
-                  Acesso
-                </Link>
-              </>
-            )}
-            <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">
+      <PanelNav
+        active="painel"
+        seesAll={seesAll}
+        right={
+          <>
+            <nav className="flex shrink-0 rounded-xl border border-line bg-pane p-1 text-sm">
               {Object.entries(PERIODS).map(([k, v]) => (
                 <Link
                   key={k}
                   href={`/painel?p=${k}`}
-                  className={`rounded-lg px-3 py-1.5 transition-colors ${
-                    k === period
-                      ? "bg-signal-soft font-semibold text-signal"
-                      : "text-mist hover:text-snow"
+                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 transition-colors ${
+                    k === period ? "bg-signal-soft font-semibold text-signal" : "text-mist hover:text-snow"
                   }`}
                 >
                   {v.label}
@@ -342,14 +291,14 @@ export default async function Painel({
             </nav>
             <a
               href={`/painel/export?p=${period}`}
-              className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
             >
               <IconDownload size={15} />
               CSV
             </a>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <div className="relative z-10 mx-auto max-w-6xl px-6 py-8">
         {/* ── métricas ── */}

@@ -10,6 +10,7 @@ import {
 } from "@/lib/format";
 import { monthGrid, googleCalUrl } from "@/lib/calendar";
 import { getScope } from "@/lib/auth";
+import { PanelNav } from "@/components/panel-nav";
 import {
   LogoMark,
   IconCalendar,
@@ -66,30 +67,7 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<{
     <main className="relative min-h-screen">
       <div className="atmosphere" />
 
-      <header className="sticky top-0 z-20 border-b border-line bg-ink/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-          <Link href="/painel" className="flex items-center gap-2.5">
-            <LogoMark size={26} />
-            <span className="font-head text-lg font-extrabold tracking-tight">
-              Amplia <span className="text-signal">Hub</span>
-            </span>
-          </Link>
-          <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">
-            <Link href="/painel" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">
-              <IconChat size={14} /> Painel
-            </Link>
-            <Link href="/painel/pipeline" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">
-              <IconFunnel size={14} /> Pipeline
-            </Link>
-            <span className="flex items-center gap-1.5 rounded-lg bg-signal-soft px-3 py-1.5 font-semibold text-signal">
-              <IconCalendar size={14} /> Agenda
-            </span>
-            <Link href="/painel/anuncios" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">
-              <IconBroadcast size={14} /> Anúncios
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <PanelNav active="agenda" seesAll={seesAll} />
 
       <div className="relative z-10 mx-auto max-w-6xl px-6 py-6">
         {/* alternador de visão */}

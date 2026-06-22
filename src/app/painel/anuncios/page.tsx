@@ -3,7 +3,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { getAccountFinance, getAdsPerformance, getAdCreatives, type AdPerf } from "@/lib/meta-ads";
 import { brl } from "@/lib/format";
 import { getScope } from "@/lib/auth";
-import { LogoMark, IconChat, IconFunnel, IconCalendar, IconBroadcast, IconWarn, IconSale, IconTrend } from "@/components/icons";
+import { PanelNav } from "@/components/panel-nav";
+import { IconWarn, IconSale, IconTrend, IconBroadcast } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -77,27 +78,25 @@ export default async function Anuncios({ searchParams }: { searchParams: Promise
     <main className="relative min-h-screen">
       <div className="atmosphere" />
 
-      <header className="sticky top-0 z-20 border-b border-line bg-ink/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
-          <Link href="/painel" className="flex items-center gap-2.5">
-            <LogoMark size={26} />
-            <span className="font-head text-lg font-extrabold tracking-tight">Amplia <span className="text-signal">Hub</span></span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">
-              <Link href="/painel" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow"><IconChat size={14} /> Painel</Link>
-              <Link href="/painel/pipeline" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow"><IconFunnel size={14} /> Pipeline</Link>
-              <Link href="/painel/agenda" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow"><IconCalendar size={14} /> Agenda</Link>
-              <span className="flex items-center gap-1.5 rounded-lg bg-signal-soft px-3 py-1.5 font-semibold text-signal"><IconBroadcast size={14} /> Anúncios</span>
-            </nav>
-            <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">
-              {Object.entries(PERIODS).map(([k, v]) => (
-                <Link key={k} href={`/painel/anuncios?p=${k}`} className={`rounded-lg px-3 py-1.5 transition-colors ${k === period ? "bg-signal-soft font-semibold text-signal" : "text-mist hover:text-snow"}`}>{v.label}</Link>
-              ))}
-            </nav>
-          </div>
-        </div>
-      </header>
+      <PanelNav
+        active="anuncios"
+        seesAll={seesAll}
+        right={
+          <nav className="flex shrink-0 rounded-xl border border-line bg-pane p-1 text-sm">
+            {Object.entries(PERIODS).map(([k, v]) => (
+              <Link
+                key={k}
+                href={`/painel/anuncios?p=${k}`}
+                className={`whitespace-nowrap rounded-lg px-3 py-1.5 transition-colors ${
+                  k === period ? "bg-signal-soft font-semibold text-signal" : "text-mist hover:text-snow"
+                }`}
+              >
+                {v.label}
+              </Link>
+            ))}
+          </nav>
+        }
+      />
 
       <div className="relative z-10 mx-auto max-w-7xl px-6 py-6">
         {/* saldo + totais */}
