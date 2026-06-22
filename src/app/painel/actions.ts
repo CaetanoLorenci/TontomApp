@@ -5,7 +5,8 @@ import { advanceStage } from "@/lib/conversion";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendCloudText } from "@/lib/cloud-whatsapp";
 import { brLocalToIso } from "@/lib/format";
-import { getScope } from "@/lib/auth";
+import { getScope, getSessionUser } from "@/lib/auth";
+import { sendPushToOrgs } from "@/lib/push";
 
 function slugify(s: string): string {
   return s
@@ -208,6 +209,48 @@ export async function setLeadOrg(formData: FormData) {
   await sb.from("capi_events").update({ org_id: orgSlug }).eq("lead_id", leadId);
   if (lead?.click_id) await sb.from("clicks").update({ org_id: orgSlug }).eq("id", lead.click_id);
   revalidateLead(leadId);
+}
+
+// ── Notificações push ───────────────────────────────────────
+type WebPushSub = { endpoint: string; keys: { p256dh: string; auth: string } };
+
+// Salva a inscrição de push do dispositivo atual, vinculada à org de quem está logado.
+export async function savePushSubscription(sub: WebPushSub, userAgent?: string): Promise<{ ok: boolean }> {
+  if (!sub?.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) return { ok: false };
+  const scope = await getScope();
+  const u = await getSessionUser();
+  await supabaseAdmin()
+    .from("push_subscriptions")
+    .upsert(
+      {
+        endpoint: sub.endpoint,
+        p256dh: sub.keys.p256dh,
+        auth: sub.keys.auth,
+        org_id: scope.org,
+        user_id: u?.id ?? null,
+        user_agent: userAgent?.slice(0, 300) ?? null,
+      },
+      { onConflict: "endpoint" },
+    );
+  return { ok: true };
+}
+
+export async function removePushSubscription(endpoint: string): Promise<{ ok: boolean }> {
+  if (!endpoint) return { ok: false };
+  await supabaseAdmin().from("push_subscriptions").delete().eq("endpoint", endpoint);
+  return { ok: true };
+}
+
+// Dispara um push de teste pros dispositivos da org de quem está logado.
+export async function sendTestPush(): Promise<{ ok: boolean; sent: number }> {
+  const scope = await getScope();
+  const sent = await sendPushToOrgs([scope.org], {
+    title: "Amplia Hub",
+    body: "🔔 Notificações ativadas! É assim que você vai saber de leads novos.",
+    url: "/painel",
+    tag: "teste",
+  });
+  return { ok: sent > 0, sent };
 }
 
 // ── Ficha do contato (CRM) ──────────────────────────────────

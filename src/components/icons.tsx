@@ -180,3 +180,13 @@ export function IconClock({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+/* Sino (notificações). filled = estado ativo. */
+export function IconBell({ size = 18, className, filled }: IconProps & { filled?: boolean }) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden fill={filled ? "currentColor" : "none"}>
+      <path d="M6 9a6 6 0 0 1 12 0c0 5 1.5 6 2 7H4c.5-1 2-2 2-7Z" />
+      <path d="M10.5 20a1.5 1.5 0 0 0 3 0" />
+    </svg>
+  );
+}

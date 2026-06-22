@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { LogoMark, IconChat, IconFunnel, IconCalendar, IconBroadcast, IconTarget } from "./icons";
+import { PushToggle } from "./push-toggle";
 
 // Header compartilhado do painel — responsivo: no celular empilha (logo em cima,
 // abas rolando na horizontal) e no desktop fica em linha. Evita o corte das abas no mobile.
@@ -60,6 +61,7 @@ export function PanelNav({
             )}
           </nav>
           {right}
+          <PushToggle />
         </div>
       </div>
     </header>

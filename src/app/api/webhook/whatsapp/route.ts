@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { advanceStage, extractValue } from "@/lib/conversion";
 import { cacheAdCreative } from "@/lib/meta-ads";
+import { sendPushToOrgs } from "@/lib/push";
 import {
   cloudText,
   type CloudWebhook,
@@ -119,6 +120,27 @@ async function handleIncoming(sb: SB, m: CloudMessage, name: string | null) {
 
   // raw debug: guarda o objeto cru da mensagem (inclui referral) p/ inspeção
   await saveMessage(sb, leadId, phone, "in", text, m.id, m as unknown as Record<string, unknown>);
+
+  // notifica o time (push): lead aguardando resposta
+  if (leadId) await notifyNewMessage(sb, leadId, name, phone, text);
+}
+
+/* Push pro time quando um lead manda mensagem (notifica Amplia + a org do lead). */
+async function notifyNewMessage(sb: SB, leadId: string, name: string | null, phone: string, text: string | null) {
+  try {
+    const { data: lead } = await sb.from("leads").select("org_id, name").eq("id", leadId).maybeSingle();
+    const org = lead?.org_id ?? "amplia";
+    const who = lead?.name ?? name ?? `+${phone}`;
+    const snippet = text ? (text.length > 80 ? text.slice(0, 80) + "…" : text) : "enviou uma mensagem";
+    await sendPushToOrgs(["amplia", org], {
+      title: `💬 ${who}`,
+      body: snippet,
+      url: `/painel/lead/${leadId}`,
+      tag: `lead-${leadId}`,
+    });
+  } catch (e) {
+    console.error("[cloud-webhook] push falhou:", e);
+  }
 }
 
 /* ── mensagem do TIME (echo da coexistência): salva + roda gatilhos ── */
