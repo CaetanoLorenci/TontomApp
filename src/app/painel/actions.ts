@@ -109,6 +109,65 @@ export async function inviteToOrg(formData: FormData) {
   revalidatePath("/painel/clientes");
 }
 
+// Acha um usuário do Auth pelo e-mail (não há getUserByEmail; paginamos o listUsers).
+async function findAuthUserByEmail(email: string) {
+  const sb = supabaseAdmin();
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 200 });
+    if (error || !data) return null;
+    const hit = data.users.find((u) => (u.email ?? "").toLowerCase() === email);
+    if (hit) return hit;
+    if (data.users.length < 200) break; // última página
+  }
+  return null;
+}
+
+// Define/redefine a senha de acesso de um usuário (só Amplia). Sem e-mail/SMTP:
+// cria o usuário já confirmado se não existir, e opcionalmente vincula a uma org de cliente.
+// É assim que a Amplia provisiona acesso (próprio e de clientes) sem depender de e-mail.
+export async function setAccessPassword(
+  _prev: { ok: boolean; msg: string } | null,
+  formData: FormData,
+): Promise<{ ok: boolean; msg: string }> {
+  const { seesAll } = await getScope();
+  if (!seesAll) return { ok: false, msg: "Sem permissão." };
+
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const orgSlug = String(formData.get("orgSlug") ?? "").trim();
+  if (!email || !email.includes("@")) return { ok: false, msg: "E-mail inválido." };
+  if (password.length < 8) return { ok: false, msg: "A senha precisa ter ao menos 8 caracteres." };
+
+  const sb = supabaseAdmin();
+  let userId: string;
+  let criado = false;
+
+  const existing = await findAuthUserByEmail(email);
+  if (existing) {
+    const { error } = await sb.auth.admin.updateUserById(existing.id, { password });
+    if (error) return { ok: false, msg: `Erro ao atualizar: ${error.message}` };
+    userId = existing.id;
+  } else {
+    const { data, error } = await sb.auth.admin.createUser({ email, password, email_confirm: true });
+    if (error || !data?.user) return { ok: false, msg: `Erro ao criar: ${error?.message ?? "desconhecido"}` };
+    userId = data.user.id;
+    criado = true;
+  }
+
+  // vincula à org (cliente) se pedido e ainda não vinculado
+  if (orgSlug) {
+    const { data: m } = await sb.from("org_members").select("user_id").eq("user_id", userId).maybeSingle();
+    if (!m) await sb.from("org_members").insert({ org_slug: orgSlug, user_id: userId, role: "member" });
+  }
+
+  revalidatePath("/painel/acesso");
+  revalidatePath("/painel/clientes");
+  return {
+    ok: true,
+    msg: `${criado ? "Acesso criado" : "Senha atualizada"} para ${email}${orgSlug ? ` (cliente: ${orgSlug})` : ""}.`,
+  };
+}
+
 // Atribui um lead (e seus dados) a uma org de cliente — roteamento manual.
 export async function setLeadOrg(formData: FormData) {
   const { seesAll } = await getScope();

@@ -4,47 +4,25 @@ import { useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { LogoMark } from "@/components/icons";
 
-// Login por CÓDIGO (6 dígitos) + link mágico como alternativa.
-// Motivo: no iPhone, um PWA instalado tem armazenamento próprio, separado do Safari.
-// O link mágico abre no Safari e a sessão NÃO entra no app instalado. Digitar o código
-// dentro do app resolve — a sessão fica no lugar certo. O link segue valendo no desktop.
+// Login por e-mail + senha. Funciona 100% dentro do app instalado (PWA) no iPhone,
+// sem depender de e-mail/SMTP. A senha é definida pela Amplia em /painel/acesso.
 export default function Login() {
-  const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function sendCode(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await supabaseBrowser().auth.signInWithOtp({
+    const { error } = await supabaseBrowser().auth.signInWithPassword({
       email: email.trim(),
-      options: {
-        // só quem já foi convidado/criado entra (onboarding controlado pela Amplia)
-        shouldCreateUser: false,
-        // mantém o link mágico no e-mail (funciona no desktop); o código vem junto
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    setLoading(false);
-    if (error) setError(error.message);
-    else setStep("code");
-  }
-
-  async function verify(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const { error } = await supabaseBrowser().auth.verifyOtp({
-      email: email.trim(),
-      token: code.trim(),
-      type: "email",
+      password,
     });
     if (error) {
       setLoading(false);
-      setError(error.message);
+      setError("E-mail ou senha incorretos.");
       return;
     }
     // Sessão criada no app. Navegação cheia leva o cookie pro proxy → painel.
@@ -62,72 +40,44 @@ export default function Login() {
           </span>
         </div>
 
-        {step === "email" ? (
-          <form onSubmit={sendCode} className="mt-6">
-            <h1 className="text-lg font-bold">Entrar</h1>
-            <p className="mt-1 text-sm text-mist">Acesso por código — sem senha.</p>
-            <input
-              type="email"
-              required
-              autoFocus
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
-              className="mt-4 w-full rounded-xl border border-line bg-transparent px-3.5 py-2.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
-            />
-            {error && <p className="mt-2 text-xs text-st-perd">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-4 w-full rounded-xl bg-signal px-4 py-2.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.02] disabled:opacity-50"
-            >
-              {loading ? "Enviando…" : "Enviar código"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={verify} className="mt-6">
-            <h1 className="text-lg font-bold">Digite o código</h1>
-            <p className="mt-1 text-sm text-mist">
-              Mandamos um código de 6 dígitos pra <span className="font-semibold text-snow">{email}</span>.
-            </p>
-            <input
-              type="text"
-              required
-              autoFocus
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]*"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="000000"
-              className="num mt-4 w-full rounded-xl border border-line bg-transparent px-3.5 py-2.5 text-center text-2xl tracking-[0.4em] placeholder:text-faint focus:border-signal/60 focus:outline-none"
-            />
-            {error && <p className="mt-2 text-xs text-st-perd">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading || code.length < 6}
-              className="mt-4 w-full rounded-xl bg-signal px-4 py-2.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.02] disabled:opacity-50"
-            >
-              {loading ? "Entrando…" : "Entrar"}
-            </button>
-            <div className="mt-4 flex items-center justify-between gap-3 text-xs text-faint">
-              <button
-                type="button"
-                onClick={() => {
-                  setStep("email");
-                  setCode("");
-                  setError(null);
-                }}
-                className="underline transition-colors hover:text-snow"
-              >
-                trocar e-mail
-              </button>
-              <span className="text-right">No computador? O e-mail também tem um link.</span>
-            </div>
-          </form>
-        )}
+        <form onSubmit={submit} className="mt-6">
+          <h1 className="text-lg font-bold">Entrar</h1>
+          <p className="mt-1 text-sm text-mist">Acesse com seu e-mail e senha.</p>
+
+          <input
+            type="email"
+            required
+            autoFocus
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="seu@email.com"
+            className="mt-4 w-full rounded-xl border border-line bg-transparent px-3.5 py-2.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+          />
+          <input
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="sua senha"
+            className="mt-3 w-full rounded-xl border border-line bg-transparent px-3.5 py-2.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+          />
+
+          {error && <p className="mt-2 text-xs text-st-perd">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-4 w-full rounded-xl bg-signal px-4 py-2.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.02] disabled:opacity-50"
+          >
+            {loading ? "Entrando…" : "Entrar"}
+          </button>
+
+          <p className="mt-4 text-xs text-faint">
+            Sem acesso ou esqueceu a senha? Fale com a Amplia pra definir uma nova.
+          </p>
+        </form>
       </div>
     </main>
   );

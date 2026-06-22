@@ -51,6 +51,7 @@ export default async function Clientes() {
             <Link href="/painel/agenda" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow"><IconCalendar size={14} /> Agenda</Link>
             <Link href="/painel/anuncios" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow"><IconBroadcast size={14} /> Anúncios</Link>
             <span className="flex items-center gap-1.5 rounded-lg bg-signal-soft px-3 py-1.5 font-semibold text-signal"><IconTarget size={14} /> Clientes</span>
+            <Link href="/painel/acesso" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-mist transition-colors hover:text-snow">Acesso</Link>
           </nav>
         </div>
       </header>
@@ -126,7 +127,7 @@ export default async function Clientes() {
         </section>
 
         <p className="mt-6 text-xs text-faint">
-          O cliente entra por link mágico e vê só os dados da org dele. Pra rotear leads, abra a conversa do lead e use “Atribuir a cliente”.
+          Pra dar acesso ao cliente sem depender de e-mail, use <Link href="/painel/acesso" className="text-signal underline">Acesso</Link> (define e-mail + senha e vincula ao cliente). O cliente vê só os dados da org dele. Pra rotear leads, abra a conversa do lead e use “Atribuir a cliente”.
         </p>
       </div>
     </main>
