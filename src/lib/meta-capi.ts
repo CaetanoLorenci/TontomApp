@@ -66,12 +66,12 @@ export async function sendCapiEvent(input: CapiInput): Promise<CapiResult> {
           ph: [sha256(input.phone.replace(/\D/g, ""))],
           ...(isCtwa ? { ctwa_clid: input.ctwaClid } : {}),
           // canal whatsapp: o Meta casa pelo whatsapp_business_account_id (o dataset é
-          // criado a partir da WABA). Mantemos page_id junto — é campo válido e
-          // messaging_channel=whatsapp desambigua de Messenger.
+          // criado a partir da WABA). NÃO mandar page_id: provado em produção (22/jun) que
+          // enviar page_id que não é exatamente a página vinculada ao dataset causa
+          // subcode 2804065 (página/dataset incompatíveis). Sem page_id → events_received:1.
           ...(isCtwa && process.env.WHATSAPP_WABA_ID
             ? { whatsapp_business_account_id: process.env.WHATSAPP_WABA_ID }
             : {}),
-          ...(isCtwa && process.env.META_PAGE_ID ? { page_id: process.env.META_PAGE_ID } : {}),
           ...(!isCtwa && input.fbc ? { fbc: input.fbc } : {}),
         },
         ...(input.value != null
