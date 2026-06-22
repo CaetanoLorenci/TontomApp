@@ -308,6 +308,15 @@ export default async function Painel({
               <IconBroadcast size={15} />
               Anúncios
             </Link>
+            {seesAll && (
+              <Link
+                href="/painel/clientes"
+                className="flex items-center gap-1.5 rounded-xl border border-line bg-pane px-3 py-2 text-sm text-mist transition-colors hover:border-line2 hover:text-snow"
+              >
+                <IconTarget size={15} />
+                Clientes
+              </Link>
+            )}
             <nav className="flex rounded-xl border border-line bg-pane p-1 text-sm">
               {Object.entries(PERIODS).map(([k, v]) => (
                 <Link

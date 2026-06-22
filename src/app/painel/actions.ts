@@ -5,6 +5,17 @@ import { advanceStage } from "@/lib/conversion";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendCloudText } from "@/lib/cloud-whatsapp";
 import { brLocalToIso } from "@/lib/format";
+import { getScope } from "@/lib/auth";
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+}
 
 function revalidateLead(leadId: string) {
   revalidatePath("/painel");
@@ -62,6 +73,55 @@ export async function updateLead(formData: FormData) {
     }
   }
 
+  revalidateLead(leadId);
+}
+
+// ── Multi-cliente: onboarding + roteamento (só Amplia) ──────
+export async function createOrg(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const name = String(formData.get("name") ?? "").trim();
+  const mode = String(formData.get("mode") ?? "rastreio");
+  if (!name) return;
+  const slug = slugify(name) || `cliente-${Date.now()}`;
+  await supabaseAdmin()
+    .from("organizations")
+    .insert({ slug, name, mode: ["rastreio", "site", "completo"].includes(mode) ? mode : "rastreio" });
+  revalidatePath("/painel/clientes");
+}
+
+export async function inviteToOrg(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const orgSlug = String(formData.get("orgSlug") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!orgSlug || !email) return;
+  const sb = supabaseAdmin();
+  const base = process.env.APP_BASE_URL || "https://tontom-app.vercel.app";
+  const { data, error } = await sb.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${base}/auth/callback`,
+  });
+  if (error || !data?.user) {
+    console.error("[invite] falhou:", error?.message);
+    return;
+  }
+  await sb.from("org_members").insert({ org_slug: orgSlug, user_id: data.user.id, role: "member" });
+  revalidatePath("/painel/clientes");
+}
+
+// Atribui um lead (e seus dados) a uma org de cliente — roteamento manual.
+export async function setLeadOrg(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const leadId = String(formData.get("leadId") ?? "");
+  const orgSlug = String(formData.get("orgSlug") ?? "").trim();
+  if (!leadId || !orgSlug) return;
+  const sb = supabaseAdmin();
+  const { data: lead } = await sb.from("leads").select("click_id").eq("id", leadId).maybeSingle();
+  await sb.from("leads").update({ org_id: orgSlug }).eq("id", leadId);
+  await sb.from("messages").update({ org_id: orgSlug }).eq("lead_id", leadId);
+  await sb.from("capi_events").update({ org_id: orgSlug }).eq("lead_id", leadId);
+  if (lead?.click_id) await sb.from("clicks").update({ org_id: orgSlug }).eq("id", lead.click_id);
   revalidateLead(leadId);
 }
 

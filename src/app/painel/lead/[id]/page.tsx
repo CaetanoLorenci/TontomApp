@@ -10,7 +10,7 @@ import {
   STAGE_META,
   NEXT_ACTIONS,
 } from "@/lib/format";
-import { updateLead, scheduleLead, addNote, addTag, removeTag } from "../../actions";
+import { updateLead, scheduleLead, addNote, addTag, removeTag, setLeadOrg } from "../../actions";
 import { ScheduleButton } from "../../schedule-button";
 import {
   IconMetaOk,
@@ -66,6 +66,13 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
   if (!seesAll && (lead as { org_id?: string }).org_id !== org) notFound();
   const tags = ((lead.tags as string[] | null) ?? []) as string[];
   const notes = (notesData ?? []) as { id: string; body: string; created_at: string }[];
+  const leadOrg = (lead as { org_id?: string }).org_id ?? "amplia";
+  const orgs = seesAll
+    ? (((await sb.from("organizations").select("slug, name").order("name")).data ?? []) as {
+        slug: string;
+        name: string;
+      }[])
+    : [];
 
   const messages = (msgs ?? []) as Msg[];
   const click = lead.clicks as unknown as {
@@ -181,8 +188,32 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
           </section>
         )}
 
-        {/* ficha do contato: tags + notas internas */}
+        {/* ficha do contato: cliente (só Amplia) + tags + notas internas */}
         <section className="card anim-up mt-4 p-4" style={{ animationDelay: "90ms" }}>
+          {seesAll && (
+            <form action={setLeadOrg} className="mb-3 flex flex-wrap items-center gap-2 border-b border-line/60 pb-3">
+              <input type="hidden" name="leadId" value={lead.id} />
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-faint">Cliente</span>
+              <select
+                name="orgSlug"
+                defaultValue={leadOrg}
+                style={{ colorScheme: "dark" }}
+                className="rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm focus:border-signal/60 focus:outline-none"
+              >
+                {orgs.map((o) => (
+                  <option key={o.slug} value={o.slug}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
+              >
+                Atribuir
+              </button>
+            </form>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-faint">Tags</span>
             {tags.map((t) => (
