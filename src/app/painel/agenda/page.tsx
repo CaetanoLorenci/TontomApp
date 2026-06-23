@@ -190,13 +190,17 @@ async function MesView({
                 ))}
               </div>
 
-              {/* mobile: indicador compacto (nº de agendamentos no dia; detalhe na visão Lista) */}
+              {/* mobile: indicador clicável (nº de agendamentos no dia → abre a Lista c/ detalhes + G) */}
               {items.length > 0 && (
-                <div className="flex justify-center sm:hidden">
-                  <span className="num rounded-full bg-st-agen/20 px-1.5 text-[10px] font-bold text-st-agen">
-                    {items.length}
+                <Link
+                  href="/painel/agenda"
+                  className="flex justify-center sm:hidden"
+                  title={`${items.length} agendamento(s) — ver na Lista`}
+                >
+                  <span className="num rounded-full bg-st-agen/20 px-2 py-0.5 text-[11px] font-bold text-st-agen">
+                    {items.length} 📅
                   </span>
-                </div>
+                </Link>
               )}
             </div>
           );
@@ -204,7 +208,12 @@ async function MesView({
       </div>
 
       <p className="mt-4 text-xs text-faint">
-        Clique no nome pra abrir o lead · no <span className="font-bold text-st-agen">G</span> pra adicionar ao Google Agenda · horários em Brasília.
+        <span className="hidden sm:inline">
+          Clique no nome pra abrir o lead · no <span className="font-bold text-st-agen">G</span> pra adicionar ao Google Agenda · horários em Brasília.
+        </span>
+        <span className="sm:hidden">
+          Toque no dia com <span className="font-bold text-st-agen">📅</span> pra ver os agendamentos na Lista (abrir lead + adicionar ao Google) · horários em Brasília.
+        </span>
       </p>
     </>
   );
