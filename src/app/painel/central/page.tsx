@@ -3,6 +3,7 @@ import { getScope } from "@/lib/auth";
 import { setRequestStatus } from "../actions";
 import { formatWhen } from "@/lib/format";
 import { PanelNav } from "@/components/panel-nav";
+import { EmptyState } from "@/components/feedback";
 import { CentralComposer } from "./composer";
 
 export const dynamic = "force-dynamic";
@@ -95,9 +96,7 @@ export default async function Central() {
           </h2>
 
           {reqs.length === 0 && (
-            <div className="card border-dashed p-8 text-center text-sm text-faint">
-              Nenhum pedido ainda{seesAll ? "." : " — mande o primeiro acima."}
-            </div>
+            <EmptyState title={seesAll ? "Nenhum pedido ainda." : "Nenhum pedido ainda."} hint={seesAll ? undefined : "Mande o primeiro acima."} />
           )}
 
           {reqs.map((r) => {

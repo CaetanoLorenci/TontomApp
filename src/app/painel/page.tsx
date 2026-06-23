@@ -21,6 +21,7 @@ import { ScheduleButton } from "./schedule-button";
 import { getAdCreatives } from "@/lib/meta-ads";
 import { getScope } from "@/lib/auth";
 import { PanelNav } from "@/components/panel-nav";
+import { EmptyState } from "@/components/feedback";
 
 export const dynamic = "force-dynamic";
 
@@ -503,14 +504,16 @@ export default async function Painel({
           )}
 
           {leads.length === 0 ? (
-            <div className="card mt-3 border-dashed p-12 text-center">
-              <LogoMark size={36} className="mx-auto opacity-50" />
-              <p className="mt-3 font-medium text-mist">Nenhuma conversa no período.</p>
-              <p className="mt-1 text-sm text-faint">
-                Abra <code className="rounded bg-pane2 px-1.5 py-0.5 text-signal">/r?utm_campaign=teste</code> pra
-                simular um clique de anúncio.
-              </p>
-            </div>
+            <EmptyState
+              className="mt-3"
+              title="Nenhuma conversa no período."
+              hint={
+                <>
+                  Abra <code className="rounded bg-pane2 px-1.5 py-0.5 text-signal">/r?utm_campaign=teste</code> pra
+                  simular um clique de anúncio.
+                </>
+              }
+            />
           ) : displayLeads.length === 0 ? (
             <div className="card mt-3 border-dashed p-8 text-center text-sm text-faint">
               Nenhuma conversa pra essa busca/filtro. <a href={`/painel?p=${period}`} className="text-signal underline">limpar</a>

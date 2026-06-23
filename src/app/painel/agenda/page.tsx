@@ -11,6 +11,7 @@ import {
 import { monthGrid, googleCalUrl } from "@/lib/calendar";
 import { getScope } from "@/lib/auth";
 import { PanelNav } from "@/components/panel-nav";
+import { EmptyState } from "@/components/feedback";
 import { ScheduleButton } from "../schedule-button";
 import {
   LogoMark,
@@ -283,13 +284,15 @@ async function ListaView({
       </section>
 
       {leads.length === 0 ? (
-        <div className="card mt-6 max-w-4xl border-dashed p-12 text-center">
-          <IconCalendar size={36} className="mx-auto opacity-50" />
-          <p className="mt-3 font-medium text-mist">Nenhum compromisso agendado.</p>
-          <p className="mt-1 text-sm text-faint">
-            Mova um lead pra <span className="text-st-agen">Agendado</span> com data/hora pra ele aparecer aqui.
-          </p>
-        </div>
+        <EmptyState
+          className="mt-6 max-w-4xl"
+          title="Nenhum compromisso agendado."
+          hint={
+            <>
+              Mova um lead pra <span className="text-st-agen">Agendado</span> com data/hora pra ele aparecer aqui.
+            </>
+          }
+        />
       ) : (
         <div className="mt-6 max-w-4xl space-y-8">
           {sections.map((sec) => (
