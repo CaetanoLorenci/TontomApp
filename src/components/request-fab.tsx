@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createClientRequest } from "@/app/painel/actions";
 import { IconChat } from "./icons";
 
@@ -11,10 +12,15 @@ export function RequestFab() {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(createClientRequest, null);
   const formRef = useRef<HTMLFormElement>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (state?.ok) formRef.current?.reset();
   }, [state]);
+
+  // Esconde onde já há barra de ações fixa / composer próprio (evita sobreposição):
+  // tela do lead (barra "Mover pra" sticky) e a própria Central.
+  if (pathname?.startsWith("/painel/lead/") || pathname === "/painel/central") return null;
 
   return (
     <div className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-50 print:hidden">
