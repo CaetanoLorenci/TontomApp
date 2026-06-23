@@ -63,7 +63,7 @@ export function AccessForm({ orgs, defaultEmail }: { orgs: Org[]; defaultEmail: 
       <button
         type="submit"
         disabled={pending}
-        className="rounded-xl bg-signal px-4 py-2 text-sm font-semibold text-ink transition-transform hover:scale-[1.03] disabled:opacity-50"
+        className="btn btn-primary"
       >
         {pending ? "Salvando…" : "Salvar acesso"}
       </button>

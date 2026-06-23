@@ -228,7 +228,7 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
                         <button
                           type="button"
                           onClick={() => confirmSale(c.id)}
-                          className="rounded-lg bg-signal px-2.5 py-1 text-xs font-semibold text-ink"
+                          className="btn btn-primary btn-sm"
                         >
                           Confirmar
                         </button>

@@ -86,7 +86,7 @@ export function InstallPrompt() {
         {!isIOS && (
           <button
             onClick={install}
-            className="shrink-0 rounded-xl bg-signal px-3.5 py-2 text-sm font-semibold text-ink transition-transform hover:scale-[1.04]"
+            className="btn btn-primary btn-sm shrink-0"
           >
             Instalar
           </button>

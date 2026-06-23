@@ -332,11 +332,11 @@ async function ListaView({
                     <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line/60 pt-3">
                       <form action={updateLead} className="flex items-center gap-2">
                         <input type="hidden" name="leadId" value={l.id} />
-                        <button type="submit" name="stage" value="vendido" className="flex items-center gap-1.5 rounded-xl bg-signal px-3 py-1.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]">
+                        <button type="submit" name="stage" value="vendido" className="btn btn-primary">
                           <IconSale size={14} /> Vendido
                         </button>
                         <input name="value" inputMode="decimal" placeholder="valor R$" className="num w-24 rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none" />
-                        <button type="submit" name="stage" value="perdido" className="rounded-xl border border-line px-3 py-1.5 text-sm text-faint transition-colors hover:border-st-perd/50 hover:text-st-perd">
+                        <button type="submit" name="stage" value="perdido" className="btn btn-danger">
                           Não fechou
                         </button>
                       </form>

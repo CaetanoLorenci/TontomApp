@@ -484,7 +484,7 @@ export default async function Painel({
               </select>
               <button
                 type="submit"
-                className="rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
+                className="btn btn-ghost"
               >
                 Filtrar
               </button>
