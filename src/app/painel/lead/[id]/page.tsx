@@ -195,10 +195,7 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
                   </option>
                 ))}
               </select>
-              <button
-                type="submit"
-                className="rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
-              >
+              <button type="submit" className="btn btn-ghost">
                 Atribuir
               </button>
             </form>
@@ -236,10 +233,7 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
               placeholder="Adicionar nota interna…"
               className="flex-1 rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
             />
-            <button
-              type="submit"
-              className="rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
-            >
+            <button type="submit" className="btn btn-ghost">
               Salvar
             </button>
           </form>
@@ -277,11 +271,7 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
                       name="stage"
                       value={s}
                       className={
-                        s === "vendido"
-                          ? "flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]"
-                          : s === "perdido"
-                            ? "rounded-xl border border-line px-3.5 py-1.5 text-sm text-faint transition-colors hover:border-st-perd/50 hover:text-st-perd"
-                            : "flex items-center gap-1.5 rounded-xl border border-line2 bg-pane2 px-3.5 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
+                        s === "vendido" ? "btn btn-primary" : s === "perdido" ? "btn btn-danger" : "btn btn-ghost"
                       }
                     >
                       {s === "vendido" ? (
