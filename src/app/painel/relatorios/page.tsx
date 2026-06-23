@@ -45,7 +45,7 @@ export default async function Relatorios({
       <div className="atmosphere" />
 
       <PanelNav
-        active="painel"
+        active="relatorios"
         seesAll={seesAll}
         right={
           <nav className="flex shrink-0 rounded-xl border border-line bg-pane p-1 text-sm">
