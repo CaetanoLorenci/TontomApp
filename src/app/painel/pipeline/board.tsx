@@ -40,7 +40,7 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const drag = useRef<DragRef | null>(null);
-  const autoScroll = useRef<{ dir: number; raf: number } | null>(null);
+  const autoScroll = useRef<{ dx: number; dy: number; raf: number } | null>(null);
 
   // Descobre o estágio sob um ponto da tela (hit-test robusto, considera o scroll).
   function stageAt(x: number, y: number): string | null {
@@ -51,18 +51,20 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
     return null;
   }
 
+  // auto-scroll durante o arraste: horizontal no container (desktop) e vertical
+  // na janela (mobile, colunas empilhadas) — assim dá pra arrastar pra coluna distante.
   function runAutoScroll() {
     const st = autoScroll.current;
-    const sc = scrollerRef.current;
-    if (!st || !sc) return;
-    sc.scrollLeft += st.dir * 14;
+    if (!st) return;
+    if (st.dx) scrollerRef.current?.scrollBy({ left: st.dx });
+    if (st.dy) window.scrollBy(0, st.dy);
     st.raf = requestAnimationFrame(runAutoScroll);
   }
-  function setAutoScroll(dir: number) {
-    if (autoScroll.current?.dir === dir) return;
+  function setAutoScroll(dx: number, dy: number) {
+    if (autoScroll.current && autoScroll.current.dx === dx && autoScroll.current.dy === dy) return;
     stopAutoScroll();
-    if (dir === 0) return;
-    autoScroll.current = { dir, raf: requestAnimationFrame(runAutoScroll) };
+    if (dx === 0 && dy === 0) return;
+    autoScroll.current = { dx, dy, raf: requestAnimationFrame(runAutoScroll) };
   }
   function stopAutoScroll() {
     if (autoScroll.current) {
@@ -100,14 +102,22 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
     setGhost({ left: e.clientX - d.offX, top: e.clientY - d.offY, w: d.w, name: d.name });
     const s = stageAt(e.clientX, e.clientY);
     if (s) setOver(s);
+    const EDGE = 56;
+    let dx = 0;
+    let dy = 0;
     const sc = scrollerRef.current;
     if (sc) {
       const rect = sc.getBoundingClientRect();
-      const EDGE = 56;
-      if (e.clientX < rect.left + EDGE) setAutoScroll(-1);
-      else if (e.clientX > rect.right - EDGE) setAutoScroll(1);
-      else setAutoScroll(0);
+      // só rola horizontal se o container de fato rola na horizontal (desktop)
+      if (sc.scrollWidth > sc.clientWidth + 4) {
+        if (e.clientX < rect.left + EDGE) dx = -16;
+        else if (e.clientX > rect.right - EDGE) dx = 16;
+      }
     }
+    const vh = window.innerHeight;
+    if (e.clientY < EDGE) dy = -16;
+    else if (e.clientY > vh - EDGE) dy = 16;
+    setAutoScroll(dx, dy);
   }
 
   function onPointerUp(e: React.PointerEvent) {
@@ -148,7 +158,10 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
 
   return (
     <>
-      <div ref={scrollerRef} className="flex gap-3 overflow-x-auto overscroll-x-contain pb-4">
+      <div
+        ref={scrollerRef}
+        className="flex flex-col gap-3 pb-4 sm:flex-row sm:overflow-x-auto sm:overscroll-x-contain"
+      >
         {ORDER.map((stage) => {
           const meta = STAGE_META[stage] ?? STAGE_META.novo;
           const col = cards.filter((c) => c.stage === stage);
@@ -156,7 +169,7 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
             <div
               key={stage}
               data-stage={stage}
-              className={`flex w-[78vw] max-w-72 shrink-0 flex-col rounded-xl border bg-pane/40 p-2 transition-colors sm:w-72 ${
+              className={`flex w-full shrink-0 flex-col rounded-xl border bg-pane/40 p-2 transition-colors sm:w-72 ${
                 over === stage ? "border-signal/60 bg-signal-soft/30" : "border-line"
               }`}
             >

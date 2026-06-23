@@ -167,14 +167,16 @@ async function MesView({
           return (
             <div
               key={d.key}
-              className={`min-h-24 rounded-lg border p-1.5 ${
+              className={`min-h-14 rounded-lg border p-1 sm:min-h-24 sm:p-1.5 ${
                 d.inMonth ? "border-line bg-pane/40" : "border-line/40"
               } ${isToday ? "!border-signal/60" : ""}`}
             >
               <div className={`num mb-1 text-xs ${isToday ? "font-bold text-signal" : d.inMonth ? "text-mist" : "text-faint"}`}>
                 {d.day}
               </div>
-              <div className="flex flex-col gap-1">
+
+              {/* desktop: lista de agendamentos */}
+              <div className="hidden flex-col gap-1 sm:flex">
                 {items.map((a) => (
                   <div key={a.id} className="flex items-center gap-1 rounded-md bg-st-agen/15 px-1.5 py-1 text-[11px] text-st-agen" title={a.name ?? "Sem nome"}>
                     <Link href={`/painel/lead/${a.id}`} className="min-w-0 flex-1 truncate hover:underline">
@@ -186,6 +188,15 @@ async function MesView({
                   </div>
                 ))}
               </div>
+
+              {/* mobile: indicador compacto (nº de agendamentos no dia; detalhe na visão Lista) */}
+              {items.length > 0 && (
+                <div className="flex justify-center sm:hidden">
+                  <span className="num rounded-full bg-st-agen/20 px-1.5 text-[10px] font-bold text-st-agen">
+                    {items.length}
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}
