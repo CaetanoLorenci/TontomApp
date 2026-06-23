@@ -535,113 +535,90 @@ export default async function Painel({
                     className={`card anim-up p-4 transition-colors ${needsReply ? "!border-signal/40" : ""}`}
                     style={{ animationDelay: `${620 + Math.min(i, 8) * 60}ms` }}
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="flex min-w-52 items-start gap-3">
-                        {/* avatar + indicador "aguardando resposta" */}
-                        <div className="relative shrink-0">
-                          <div
-                            className="num flex h-9 w-9 items-center justify-center rounded-full border text-xs font-bold"
-                            style={{ borderColor: meta.color, color: meta.color, background: `color-mix(in srgb, ${meta.color} 10%, transparent)` }}
-                          >
-                            {initials}
-                          </div>
-                          {needsReply && (
-                            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-signal ring-2 ring-ink" title="aguardando sua resposta" />
-                          )}
+                    {/* área de info = um único alvo de toque (abre a conversa) */}
+                    <Link href={`/painel/lead/${l.id}`} className="flex items-start gap-3">
+                      {/* avatar + indicador "aguardando resposta" */}
+                      <div className="relative shrink-0">
+                        <div
+                          className="num flex h-9 w-9 items-center justify-center rounded-full border text-xs font-bold"
+                          style={{ borderColor: meta.color, color: meta.color, background: `color-mix(in srgb, ${meta.color} 10%, transparent)` }}
+                        >
+                          {initials}
                         </div>
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Link href={`/painel/lead/${l.id}`} className="font-semibold transition-colors hover:text-signal">
-                              {l.name ?? "Sem nome"}
-                            </Link>
-                            <span
-                              className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                              style={{ color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }}
-                            >
-                              {meta.label}
-                            </span>
-                            {needsReply && (
-                              <span className="rounded-full bg-signal-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-signal">
-                                responder
-                              </span>
-                            )}
-                            {l.stage === "vendido" && l.value != null && (
-                              <span className="num text-xs font-bold text-signal">{brl.format(l.value)}</span>
-                            )}
-                          </div>
-                          <div className="num mt-1 text-xs text-mist">
-                            {formatPhone(l.phone)} · {formatWhen(l.last_message_at ?? l.created_at)}
-                          </div>
-                          {l.stage === "agendado" && l.scheduled_at && (
-                            <div className="num mt-1 inline-flex items-center gap-1 rounded-full bg-st-agen/10 px-2 py-0.5 text-[11px] font-medium text-st-agen">
-                              <IconCalendar size={11} />
-                              {formatSchedule(l.scheduled_at)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="text-right text-xs">
-                        {l.clicks ? (
-                          <>
-                            <div className="flex items-center justify-end gap-1.5 font-medium text-snow">
-                              {cr?.image_path ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={cr.image_path}
-                                  alt=""
-                                  className="h-5 w-5 rounded border border-line object-cover"
-                                />
-                              ) : (
-                                <IconBroadcast size={13} className="text-signal" />
-                              )}
-                              {cr?.campaign_name ?? l.clicks.utm_campaign ?? "(sem campanha)"}
-                            </div>
-                            <div className="num mt-0.5 text-faint">
-                              {[l.clicks.utm_source, l.code].filter(Boolean).join(" · ")}
-                              {l.attributed_via === "janela" && (
-                                <span className="ml-1.5 text-st-agen" title="atribuído por janela de tempo (sem código na mensagem)">
-                                  ≈ janela
-                                </span>
-                              )}
-                              {l.attributed_via === "ctwa" && (
-                                <span className="ml-1.5 font-semibold text-signal" title="atribuição nativa do anúncio de WhatsApp (ctwa_clid)">
-                                  nativo
-                                </span>
-                              )}
-                            </div>
-                            {capi.length > 0 && (
-                              <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-signal-soft px-2 py-0.5 font-semibold text-signal">
-                                <IconMetaOk size={12} />
-                                Meta · {[...new Set(capi)].join(", ")}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-st-agen/10 px-2.5 py-1 font-medium text-st-agen">
-                            <IconWarn size={13} />
-                            sem rastreio
-                          </span>
+                        {needsReply && (
+                          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-signal ring-2 ring-ink" title="aguardando sua resposta" />
                         )}
                       </div>
-                    </div>
 
-                    {(l.last_message ?? l.first_message) && (
-                      <p className="mt-3 line-clamp-2 rounded-xl border border-line/60 bg-ink/60 px-3.5 py-2.5 text-sm text-mist">
-                        <span className={`mr-1 font-semibold ${needsReply ? "text-st-agen" : "text-faint"}`}>
-                          {l.last_message ? (needsReply ? "Lead:" : "Você:") : ""}
-                        </span>
-                        {l.last_message ?? l.first_message}
-                      </p>
-                    )}
+                      <div className="min-w-0 flex-1">
+                        {/* linha 1: nome forte + estado */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="truncate font-semibold text-snow">{l.name ?? "Sem nome"}</span>
+                          <span
+                            className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                            style={{ color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }}
+                          >
+                            {meta.label}
+                          </span>
+                          {needsReply && (
+                            <span className="shrink-0 rounded-full bg-signal-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-signal">
+                              responder
+                            </span>
+                          )}
+                          {l.stage === "vendido" && l.value != null && (
+                            <span className="num shrink-0 text-xs font-bold text-signal">{brl.format(l.value)}</span>
+                          )}
+                        </div>
 
-                    <Link
-                      href={`/painel/lead/${l.id}`}
-                      className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-mist transition-colors hover:text-signal"
-                    >
-                      <IconChat size={13} />
-                      Abrir conversa
-                      <IconAdvance size={12} />
+                        {/* linha 2: prévia da última mensagem */}
+                        {(l.last_message ?? l.first_message) && (
+                          <p className="mt-1 line-clamp-1 text-sm text-mist">
+                            {l.last_message && (
+                              <span className={`mr-1 font-semibold ${needsReply ? "text-st-agen" : "text-faint"}`}>
+                                {needsReply ? "Lead:" : "Você:"}
+                              </span>
+                            )}
+                            {l.last_message ?? l.first_message}
+                          </p>
+                        )}
+
+                        {/* linha 3: metadados (telefone/hora · agenda · origem · Meta) */}
+                        <div className="num mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-faint">
+                          <span>
+                            {formatPhone(l.phone)} · {formatWhen(l.last_message_at ?? l.created_at)}
+                          </span>
+                          {l.stage === "agendado" && l.scheduled_at && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-st-agen/10 px-2 py-0.5 font-medium text-st-agen">
+                              <IconCalendar size={11} /> {formatSchedule(l.scheduled_at)}
+                            </span>
+                          )}
+                          {l.clicks ? (
+                            <span className="inline-flex items-center gap-1 text-mist">
+                              {cr?.image_path ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={cr.image_path} alt="" className="h-4 w-4 rounded border border-line object-cover" />
+                              ) : (
+                                <IconBroadcast size={12} className="text-signal" />
+                              )}
+                              <span className="max-w-[11rem] truncate">
+                                {cr?.campaign_name ?? l.clicks.utm_campaign ?? "(sem campanha)"}
+                              </span>
+                              {l.attributed_via === "ctwa" && <span className="font-semibold text-signal">· nativo</span>}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-st-agen">
+                              <IconWarn size={12} /> sem rastreio
+                            </span>
+                          )}
+                          {capi.length > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-signal-soft px-2 py-0.5 font-semibold text-signal" title={`Meta · ${[...new Set(capi)].join(", ")}`}>
+                              <IconMetaOk size={12} /> Meta
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <IconAdvance size={16} className="mt-1 shrink-0 text-faint" />
                     </Link>
 
                     {NEXT_ACTIONS[l.stage]?.length > 0 && (
@@ -657,11 +634,7 @@ export default async function Painel({
                                 name="stage"
                                 value={s}
                                 className={
-                                  s === "vendido"
-                                    ? "flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]"
-                                    : s === "perdido"
-                                      ? "rounded-xl border border-line px-3.5 py-1.5 text-sm text-faint transition-colors hover:border-st-perd/50 hover:text-st-perd"
-                                      : "flex items-center gap-1.5 rounded-xl border border-line2 bg-pane2 px-3.5 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
+                                  s === "vendido" ? "btn btn-primary" : s === "perdido" ? "btn btn-danger" : "btn btn-ghost"
                                 }
                               >
                                 {s === "vendido" ? (
