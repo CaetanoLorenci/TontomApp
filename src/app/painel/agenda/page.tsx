@@ -11,6 +11,7 @@ import {
 import { monthGrid, googleCalUrl } from "@/lib/calendar";
 import { getScope } from "@/lib/auth";
 import { PanelNav } from "@/components/panel-nav";
+import { ScheduleButton } from "../schedule-button";
 import {
   LogoMark,
   IconCalendar,
@@ -340,13 +341,7 @@ async function ListaView({
                         </button>
                       </form>
 
-                      <form action={scheduleLead} className="flex items-center gap-1.5">
-                        <input type="hidden" name="leadId" value={l.id} />
-                        <input type="datetime-local" name="scheduledAt" required defaultValue={isoToBrLocalInput(l.scheduled_at)} className="num rounded-xl border border-line bg-transparent px-2.5 py-1.5 text-xs focus:border-signal/60 focus:outline-none" />
-                        <button type="submit" className="flex items-center gap-1 rounded-xl border border-line2 bg-pane2 px-2.5 py-1.5 text-xs font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal" title="reagendar">
-                          <IconClock size={13} /> Reagendar
-                        </button>
-                      </form>
+                      <ScheduleButton leadId={l.id} defaultValue={isoToBrLocalInput(l.scheduled_at)} label="Reagendar" />
                     </div>
                   </li>
                 ))}

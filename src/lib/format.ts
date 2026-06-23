@@ -32,9 +32,11 @@ export const BR_TZ = "America/Sao_Paulo";
 export const BR_OFFSET = "-03:00";
 
 // "2026-06-18T15:30" (datetime-local, hora de Brasília) → ISO UTC pra gravar.
+// Aceita segundos opcionais (alguns navegadores mobile mandam "HH:mm:ss").
 export function brLocalToIso(local: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(local)) return null;
-  const d = new Date(`${local}:00${BR_OFFSET}`);
+  const m = local.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(?::\d{2})?$/);
+  if (!m) return null;
+  const d = new Date(`${m[1]}:00${BR_OFFSET}`);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 

@@ -167,22 +167,11 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
                   <span className="text-faint">Agendado — sem data definida</span>
                 )}
               </div>
-              <form action={scheduleLead} className="flex flex-wrap items-center gap-2">
-                <input type="hidden" name="leadId" value={lead.id} />
-                <input
-                  type="datetime-local"
-                  name="scheduledAt"
-                  required
-                  defaultValue={lead.scheduled_at ? isoToBrLocalInput(lead.scheduled_at) : undefined}
-                  className="num rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm focus:border-signal/60 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
-                >
-                  <IconClock size={14} /> {lead.scheduled_at ? "Reagendar" : "Definir"}
-                </button>
-              </form>
+              <ScheduleButton
+                leadId={lead.id}
+                defaultValue={lead.scheduled_at ? isoToBrLocalInput(lead.scheduled_at) : null}
+                label={lead.scheduled_at ? "Reagendar" : "Definir"}
+              />
             </div>
             {lead.scheduled_note && <p className="mt-2 text-xs text-mist">📝 {lead.scheduled_note}</p>}
           </section>
