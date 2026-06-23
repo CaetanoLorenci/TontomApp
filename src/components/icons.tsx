@@ -190,3 +190,23 @@ export function IconBell({ size = 18, className, filled }: IconProps & { filled?
     </svg>
   );
 }
+
+/* Criativo (imagem) */
+export function IconImage({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <rect x="4" y="4.5" width="16" height="15" rx="2.5" />
+      <circle cx="9" cy="10" r="1.6" />
+      <path d="M5 17l4.5-4.2a1.6 1.6 0 0 1 2.2 0L19 19" />
+    </svg>
+  );
+}
+
+/* Projetos (pasta) */
+export function IconFolder({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <path d="M4 7.5a2 2 0 0 1 2-2h3.2a2 2 0 0 1 1.5.7l1 1.3H18a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
+    </svg>
+  );
+}

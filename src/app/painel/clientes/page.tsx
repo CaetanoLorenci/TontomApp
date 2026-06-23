@@ -79,11 +79,12 @@ export default async function Clientes() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold">{org.name}</span>
+                      <Link href={`/painel/clientes/${org.slug}`} className="font-semibold hover:text-signal">{org.name}</Link>
                       <span className="rounded-full bg-signal-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-signal">
                         {MODE_LABEL[org.mode] ?? org.mode}
                       </span>
                       {isAmplia && <span className="text-[10px] text-faint">(interno)</span>}
+                      <Link href={`/painel/clientes/${org.slug}`} className="text-[10px] text-faint underline hover:text-signal">perfil</Link>
                     </div>
                     <div className="num mt-0.5 text-xs text-faint">
                       {leadCount.get(org.slug) ?? 0} leads · {memberCount.get(org.slug) ?? 0} acesso(s) · <span className="text-mist">{org.slug}</span>
