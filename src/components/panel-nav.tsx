@@ -37,7 +37,7 @@ export function PanelNav({
   return (
     <>
     <header className="sticky top-0 z-20 border-b border-line bg-ink/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6">
+      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:px-6">
         <Link href="/painel" className="flex shrink-0 items-center gap-2.5">
           <LogoMark size={26} />
           <span className="font-head text-lg font-extrabold tracking-tight">
@@ -45,8 +45,9 @@ export function PanelNav({
           </span>
         </Link>
 
-        <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5 sm:mx-0 sm:justify-end sm:px-0">
-          <nav className="flex shrink-0 rounded-xl border border-line bg-pane p-1 text-sm">
+        {/* menu em linha própria, abaixo do logo; abas quebram linha quando não cabem */}
+        <div className="flex flex-wrap items-center gap-2">
+          <nav className="flex flex-wrap rounded-xl border border-line bg-pane p-1 text-sm">
             {items.map((it) =>
               it.key === active ? (
                 <span
