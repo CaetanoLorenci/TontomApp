@@ -117,3 +117,85 @@ alter table public.capi_events    enable row level security;
 alter table public.messages       enable row level security;
 alter table public.stage_triggers enable row level security;
 -- Sem políticas: nega tudo por padrão. Acesso só via service_role (server). OK pro MVP.
+
+-- ═════════════════════ Portal Amplia (perfil + entregáveis + projetos + criativos) ═════════════════════
+-- Adicionado pela integração do protótipo de atendimento. Reaplicável (idempotente).
+
+-- Perfil rico do cliente: estende organizations (já tem slug/name/logo_url/brand_color/mode).
+alter table public.organizations add column if not exists segmento text;
+alter table public.organizations add column if not exists contato_principal text;
+alter table public.organizations add column if not exists contato_email text;
+alter table public.organizations add column if not exists site text;
+alter table public.organizations add column if not exists escopo_midia text;
+alter table public.organizations add column if not exists observacoes text;
+alter table public.organizations add column if not exists historico text;
+alter table public.organizations add column if not exists tipografia text;
+alter table public.organizations add column if not exists tom_voz text;
+
+-- Entregáveis contratados por cliente.
+create table if not exists public.entregaveis (
+  id         uuid primary key default gen_random_uuid(),
+  org_id     text not null default 'amplia' references public.organizations(slug) on delete cascade,
+  tipo       text not null,            -- Gestão de Ads | Copy | Criativos | Relatório | Orgânico/Social | Outros
+  frequencia text,                     -- Diária | Semanal | Quinzenal | Mensal | Sob demanda
+  volume     text,                     -- ex.: "4 criativos/mês"
+  descricao  text,
+  ativo      boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists entregaveis_org_idx on public.entregaveis (org_id);
+
+-- Projetos + report de desenvolvimento.
+create table if not exists public.projetos (
+  id         uuid primary key default gen_random_uuid(),
+  org_id     text not null default 'amplia' references public.organizations(slug) on delete cascade,
+  nome       text not null,
+  status     text not null default 'andamento',  -- a_fazer | andamento | revisao | entregue
+  tipo       text,                                -- Campanha | Conteúdo | Setup
+  prioridade text,                                -- alta | media | baixa
+  prazo      date,
+  descricao  text,
+  report     text,                                -- relatório de desenvolvimento (livre)
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists projetos_org_idx on public.projetos (org_id);
+
+-- Criativos + fluxo de aprovação do cliente.
+create table if not exists public.criativos (
+  id                uuid primary key default gen_random_uuid(),
+  org_id            text not null default 'amplia' references public.organizations(slug) on delete cascade,
+  titulo            text not null,
+  tipo              text,                     -- Foto | Vídeo | Arte | Render 3D
+  descricao         text,
+  arquivo_url       text,                     -- link/imagem do criativo
+  status_aprovacao  text not null default 'pendente'
+                      check (status_aprovacao in ('pendente','aprovado','reprovado')),
+  motivo_reprovacao text,
+  avaliado_em       timestamptz,
+  avaliado_por      uuid,                     -- auth.users(id) de quem avaliou
+  created_at        timestamptz not null default now()
+);
+create index if not exists criativos_org_idx on public.criativos (org_id);
+
+-- Regra de negócio: reprovar exige motivo com no mínimo 25 palavras (reforço no banco).
+create or replace function public.validar_reprovacao_criativo()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if new.status_aprovacao = 'reprovado' then
+    if new.motivo_reprovacao is null
+       or array_length(regexp_split_to_array(btrim(new.motivo_reprovacao), '\s+'), 1) < 25 then
+      raise exception 'O motivo da reprovação precisa ter ao menos 25 palavras.';
+    end if;
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_validar_reprovacao_criativo on public.criativos;
+create trigger trg_validar_reprovacao_criativo
+  before insert or update on public.criativos
+  for each row execute function public.validar_reprovacao_criativo();
+
+-- RLS ligada sem políticas (mesmo padrão do resto: acesso só via service_role no server).
+alter table public.entregaveis enable row level security;
+alter table public.projetos    enable row level security;
+alter table public.criativos   enable row level security;

@@ -1,12 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { LogoMark, IconChat, IconFunnel, IconCalendar, IconBroadcast, IconTarget, IconTrend } from "./icons";
+import { LogoMark, IconChat, IconFunnel, IconCalendar, IconBroadcast, IconTarget, IconTrend, IconImage, IconFolder } from "./icons";
 import { PushToggle } from "./push-toggle";
 import { RequestFab } from "./request-fab";
 
 // Header compartilhado do painel — responsivo: no celular empilha (logo em cima,
 // abas rolando na horizontal) e no desktop fica em linha. Evita o corte das abas no mobile.
-type Key = "painel" | "pipeline" | "agenda" | "anuncios" | "relatorios" | "central" | "clientes" | "acesso";
+type Key = "painel" | "pipeline" | "agenda" | "anuncios" | "relatorios" | "criativos" | "projetos" | "central" | "clientes" | "acesso";
 
 const BASE = [
   { key: "painel", href: "/painel", label: "Painel", icon: <IconChat size={14} /> },
@@ -14,6 +14,8 @@ const BASE = [
   { key: "agenda", href: "/painel/agenda", label: "Agenda", icon: <IconCalendar size={14} /> },
   { key: "anuncios", href: "/painel/anuncios", label: "Anúncios", icon: <IconBroadcast size={14} /> },
   { key: "relatorios", href: "/painel/relatorios", label: "Relatórios", icon: <IconTrend size={14} /> },
+  { key: "criativos", href: "/painel/criativos", label: "Criativos", icon: <IconImage size={14} /> },
+  { key: "projetos", href: "/painel/projetos", label: "Projetos", icon: <IconFolder size={14} /> },
   { key: "central", href: "/painel/central", label: "Central", icon: null },
 ] as const;
 
