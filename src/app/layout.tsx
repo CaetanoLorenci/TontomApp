@@ -3,6 +3,7 @@ import { Montserrat, Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { InstallPrompt } from "@/components/install-prompt";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 
 // Identidade Amplia: Montserrat (títulos) + Inter (corpo). Mono p/ números.
 const montserrat = Montserrat({
@@ -59,6 +60,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegister />
+        <PullToRefresh />
         {children}
         <InstallPrompt />
       </body>
