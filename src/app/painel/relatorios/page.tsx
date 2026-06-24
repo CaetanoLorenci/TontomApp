@@ -3,29 +3,46 @@ import { getScope } from "@/lib/auth";
 import { brl } from "@/lib/format";
 import { PanelNav } from "@/components/panel-nav";
 import { IconCash, IconChat, IconTrend, IconWarn, IconBroadcast, IconCalendar } from "@/components/icons";
-import { getRelatorioMeta } from "@/lib/relatorios/meta";
+import { getRelatorioMeta, listarContas } from "@/lib/relatorios/meta";
 import { resolvePeriodo, PRESETS } from "@/lib/relatorios/periodo";
 import { gerarLeitura } from "@/lib/relatorios/leitura";
+import { SeletorConta } from "@/components/relatorios/SeletorConta";
 
 export const dynamic = "force-dynamic";
 
-/* Relatório de campanhas (Meta) — desempenho por período que o cliente escolher.
-   Anti-vaidade: custo por RESULTADO real (conversa/lead), não alcance.
-   O cruzamento com vendas/CAC vive na página Anúncios; aqui é a foto da mídia. */
+/* Relatório de campanhas (Meta) — desempenho por cliente (conta de anúncio) e
+   período que o cliente escolher. Anti-vaidade: custo por RESULTADO real
+   (conversa/lead), não alcance. O cruzamento com vendas/CAC vive em Anúncios. */
 
 const int = (n: number) => Math.round(n).toLocaleString("pt-BR");
 
 export default async function Relatorios({
   searchParams,
 }: {
-  searchParams: Promise<{ preset?: string; since?: string; until?: string }>;
+  searchParams: Promise<{ preset?: string; since?: string; until?: string; conta?: string }>;
 }) {
   const sp = await searchParams;
   const { seesAll } = await getScope();
   const periodo = resolvePeriodo(sp);
-  const rel = await getRelatorioMeta(periodo.since, periodo.until);
+
+  // Cliente = conta de anúncio. Amplia escolhe entre todas; cliente fica preso à
+  // conta padrão (sem mapa org→conta ainda, não deixamos um cliente ver outro).
+  const contaPadrao = process.env.META_AD_ACCOUNT_ID ?? "";
+  const contas = seesAll ? await listarContas() : [];
+  const contaParam = sp.conta?.startsWith("act_") ? sp.conta : null;
+  const contaId = seesAll ? (contaParam ?? contaPadrao) : contaPadrao;
+  const contaNome = contas.find((c) => c.id === contaId)?.nome ?? null;
+
+  const rel = await getRelatorioMeta(contaId, periodo.since, periodo.until);
   const { total } = rel;
   const leitura = gerarLeitura(rel);
+
+  // preserva a conta ao trocar de período (atalhos)
+  const presetHref = (preset: string) => {
+    const p = new URLSearchParams({ preset });
+    if (seesAll && contaId) p.set("conta", contaId);
+    return `/painel/relatorios?${p.toString()}`;
+  };
 
   const stats = [
     { label: "Investido", value: brl.format(total.gasto), icon: IconCash },
@@ -48,32 +65,39 @@ export default async function Relatorios({
         active="relatorios"
         seesAll={seesAll}
         right={
-          <nav className="flex shrink-0 rounded-xl border border-line bg-pane p-1 text-sm">
-            {PRESETS.map((p) => (
-              <Link
-                key={p.key}
-                href={`/painel/relatorios?preset=${p.key}`}
-                className={`whitespace-nowrap rounded-lg px-3 py-1.5 transition-colors ${
-                  p.key === periodo.preset
-                    ? "bg-signal-soft font-semibold text-signal"
-                    : "text-mist hover:text-snow"
-                }`}
-              >
-                {p.label}
-              </Link>
-            ))}
-          </nav>
+          <div className="flex flex-wrap items-center gap-2">
+            {seesAll && contas.length > 0 && <SeletorConta contas={contas} atual={contaId} />}
+            <nav className="flex shrink-0 rounded-xl border border-line bg-pane p-1 text-sm">
+              {PRESETS.map((p) => (
+                <Link
+                  key={p.key}
+                  href={presetHref(p.key)}
+                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 transition-colors ${
+                    p.key === periodo.preset
+                      ? "bg-signal-soft font-semibold text-signal"
+                      : "text-mist hover:text-snow"
+                  }`}
+                >
+                  {p.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
         }
       />
 
       <div className="relative z-10 mx-auto max-w-7xl px-6 py-6">
-        {/* cabeçalho do período + escolha livre de/até */}
+        {/* cabeçalho: cliente + período + escolha livre de/até */}
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <h1 className="flex items-center gap-2 text-lg font-bold">
+          <h1 className="flex flex-wrap items-center gap-2 text-lg font-bold">
             <IconCalendar size={18} className="text-signal" />
-            Relatório — <span className="capitalize text-signal">{periodo.label}</span>
+            Relatório
+            {contaNome && <span className="text-signal">{contaNome}</span>}
+            <span className="text-faint">·</span>
+            <span className="capitalize text-mist">{periodo.label}</span>
           </h1>
           <form method="get" action="/painel/relatorios" className="flex flex-wrap items-end gap-2 text-sm">
+            {seesAll && contaId && <input type="hidden" name="conta" value={contaId} />}
             <label className="flex flex-col gap-0.5 text-[11px] uppercase tracking-widest text-faint">
               De
               <input
@@ -205,7 +229,7 @@ export default async function Relatorios({
 
         <p className="mt-3 text-xs text-faint">
           <IconCash size={12} className="mr-1 inline text-signal" />
-          Dados de mídia direto da Meta (ads_read) · resultado = conversa de WhatsApp + lead de formulário · período {periodo.label}.
+          Dados de mídia direto da Meta (ads_read) · resultado = conversa de WhatsApp + lead de formulário · {contaNome ?? "conta padrão"} · período {periodo.label}.
         </p>
       </div>
     </main>

@@ -89,9 +89,8 @@ function toLinha(nivel: "campaign" | "ad", r: GraphRow): Linha {
   };
 }
 
-async function fetchInsights(nivel: "campaign" | "ad", since: string, until: string): Promise<Linha[]> {
+async function fetchInsights(act: string, nivel: "campaign" | "ad", since: string, until: string): Promise<Linha[]> {
   const token = process.env.META_ADS_TOKEN;
-  const act = process.env.META_AD_ACCOUNT_ID;
   if (!token || !act) return [];
   const fields = "campaign_name,ad_name,spend,impressions,reach,clicks,ctr,frequency,actions";
   const timeRange = encodeURIComponent(JSON.stringify({ since, until }));
@@ -141,12 +140,36 @@ export type Relatorio = {
   total: Totais;
 };
 
-export async function getRelatorioMeta(since: string, until: string): Promise<Relatorio> {
+export async function getRelatorioMeta(accountId: string, since: string, until: string): Promise<Relatorio> {
   const [campanhas, criativos] = await Promise.all([
-    fetchInsights("campaign", since, until),
-    fetchInsights("ad", since, until),
+    fetchInsights(accountId, "campaign", since, until),
+    fetchInsights(accountId, "ad", since, until),
   ]);
   campanhas.sort((a, b) => b.gasto - a.gasto);
   criativos.sort((a, b) => b.gasto - a.gasto);
   return { campanhas, criativos, total: agregar(campanhas) };
+}
+
+// Lista as contas de anúncio que o token do Hub enxerga (cliente = conta).
+export type Conta = { id: string; nome: string };
+
+export async function listarContas(): Promise<Conta[]> {
+  const token = process.env.META_ADS_TOKEN;
+  if (!token) return [];
+  const url = `https://graph.facebook.com/${GRAPH}/me/adaccounts?fields=name,account_id&limit=200`;
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) {
+      console.error("[relatorios/meta] adaccounts falhou:", res.status);
+      return [];
+    }
+    const json = (await res.json()) as { data?: { name?: string; account_id?: string }[] };
+    return (json.data ?? [])
+      .filter((a) => a.account_id)
+      .map((a) => ({ id: `act_${a.account_id}`, nome: a.name?.trim() || `act_${a.account_id}` }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  } catch (e) {
+    console.error("[relatorios/meta] erro adaccounts:", e);
+    return [];
+  }
 }
