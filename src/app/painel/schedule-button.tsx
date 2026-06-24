@@ -21,11 +21,7 @@ export function ScheduleButton({
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 rounded-xl border border-line2 bg-pane2 px-3.5 py-1.5 text-sm font-medium text-snow transition-colors hover:border-st-agen/60 hover:text-st-agen"
-      >
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-ghost">
         <IconCalendar size={14} /> {label}
       </button>
     );
@@ -64,20 +60,12 @@ export function ScheduleButton({
       )}
 
       {date && time && (
-        <button
-          type="submit"
-          className="flex items-center gap-1.5 rounded-xl bg-st-agen px-3.5 py-1.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]"
-        >
+        <button type="submit" className="btn btn-primary">
           <IconAdvance size={14} /> Confirmar
         </button>
       )}
 
-      <button
-        type="button"
-        onClick={() => setOpen(false)}
-        className="rounded-xl border border-line px-2.5 py-1.5 text-sm text-faint transition-colors hover:text-snow"
-        aria-label="cancelar"
-      >
+      <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost btn-sm" aria-label="cancelar">
         ✕
       </button>
     </form>

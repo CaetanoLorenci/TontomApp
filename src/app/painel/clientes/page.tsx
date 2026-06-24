@@ -62,7 +62,7 @@ export default async function Clientes() {
               <option value="site">Conversão (site)</option>
               <option value="completo">Completo (CTWA)</option>
             </select>
-            <button type="submit" className="rounded-xl bg-signal px-4 py-2 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]">
+            <button type="submit" className="btn btn-primary">
               Criar
             </button>
           </form>
@@ -101,7 +101,7 @@ export default async function Clientes() {
                         placeholder="e-mail do cliente"
                         className="rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
                       />
-                      <button type="submit" className="rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal">
+                      <button type="submit" className="btn btn-ghost">
                         Convidar
                       </button>
                     </form>

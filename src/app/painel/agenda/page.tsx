@@ -11,6 +11,8 @@ import {
 import { monthGrid, googleCalUrl } from "@/lib/calendar";
 import { getScope } from "@/lib/auth";
 import { PanelNav } from "@/components/panel-nav";
+import { EmptyState } from "@/components/feedback";
+import { ScheduleButton } from "../schedule-button";
 import {
   LogoMark,
   IconCalendar,
@@ -167,14 +169,16 @@ async function MesView({
           return (
             <div
               key={d.key}
-              className={`min-h-24 rounded-lg border p-1.5 ${
+              className={`min-h-14 rounded-lg border p-1 sm:min-h-24 sm:p-1.5 ${
                 d.inMonth ? "border-line bg-pane/40" : "border-line/40"
               } ${isToday ? "!border-signal/60" : ""}`}
             >
               <div className={`num mb-1 text-xs ${isToday ? "font-bold text-signal" : d.inMonth ? "text-mist" : "text-faint"}`}>
                 {d.day}
               </div>
-              <div className="flex flex-col gap-1">
+
+              {/* desktop: lista de agendamentos */}
+              <div className="hidden flex-col gap-1 sm:flex">
                 {items.map((a) => (
                   <div key={a.id} className="flex items-center gap-1 rounded-md bg-st-agen/15 px-1.5 py-1 text-[11px] text-st-agen" title={a.name ?? "Sem nome"}>
                     <Link href={`/painel/lead/${a.id}`} className="min-w-0 flex-1 truncate hover:underline">
@@ -186,13 +190,31 @@ async function MesView({
                   </div>
                 ))}
               </div>
+
+              {/* mobile: indicador clicável (nº de agendamentos no dia → abre a Lista c/ detalhes + G) */}
+              {items.length > 0 && (
+                <Link
+                  href="/painel/agenda"
+                  className="flex justify-center sm:hidden"
+                  title={`${items.length} agendamento(s) — ver na Lista`}
+                >
+                  <span className="num rounded-full bg-st-agen/20 px-2 py-0.5 text-[11px] font-bold text-st-agen">
+                    {items.length} 📅
+                  </span>
+                </Link>
+              )}
             </div>
           );
         })}
       </div>
 
       <p className="mt-4 text-xs text-faint">
-        Clique no nome pra abrir o lead · no <span className="font-bold text-st-agen">G</span> pra adicionar ao Google Agenda · horários em Brasília.
+        <span className="hidden sm:inline">
+          Clique no nome pra abrir o lead · no <span className="font-bold text-st-agen">G</span> pra adicionar ao Google Agenda · horários em Brasília.
+        </span>
+        <span className="sm:hidden">
+          Toque no dia com <span className="font-bold text-st-agen">📅</span> pra ver os agendamentos na Lista (abrir lead + adicionar ao Google) · horários em Brasília.
+        </span>
       </p>
     </>
   );
@@ -262,13 +284,15 @@ async function ListaView({
       </section>
 
       {leads.length === 0 ? (
-        <div className="card mt-6 max-w-4xl border-dashed p-12 text-center">
-          <IconCalendar size={36} className="mx-auto opacity-50" />
-          <p className="mt-3 font-medium text-mist">Nenhum compromisso agendado.</p>
-          <p className="mt-1 text-sm text-faint">
-            Mova um lead pra <span className="text-st-agen">Agendado</span> com data/hora pra ele aparecer aqui.
-          </p>
-        </div>
+        <EmptyState
+          className="mt-6 max-w-4xl"
+          title="Nenhum compromisso agendado."
+          hint={
+            <>
+              Mova um lead pra <span className="text-st-agen">Agendado</span> com data/hora pra ele aparecer aqui.
+            </>
+          }
+        />
       ) : (
         <div className="mt-6 max-w-4xl space-y-8">
           {sections.map((sec) => (
@@ -320,22 +344,16 @@ async function ListaView({
                     <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line/60 pt-3">
                       <form action={updateLead} className="flex items-center gap-2">
                         <input type="hidden" name="leadId" value={l.id} />
-                        <button type="submit" name="stage" value="vendido" className="flex items-center gap-1.5 rounded-xl bg-signal px-3 py-1.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]">
+                        <button type="submit" name="stage" value="vendido" className="btn btn-primary">
                           <IconSale size={14} /> Vendido
                         </button>
                         <input name="value" inputMode="decimal" placeholder="valor R$" className="num w-24 rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none" />
-                        <button type="submit" name="stage" value="perdido" className="rounded-xl border border-line px-3 py-1.5 text-sm text-faint transition-colors hover:border-st-perd/50 hover:text-st-perd">
+                        <button type="submit" name="stage" value="perdido" className="btn btn-danger">
                           Não fechou
                         </button>
                       </form>
 
-                      <form action={scheduleLead} className="flex items-center gap-1.5">
-                        <input type="hidden" name="leadId" value={l.id} />
-                        <input type="datetime-local" name="scheduledAt" required defaultValue={isoToBrLocalInput(l.scheduled_at)} className="num rounded-xl border border-line bg-transparent px-2.5 py-1.5 text-xs focus:border-signal/60 focus:outline-none" />
-                        <button type="submit" className="flex items-center gap-1 rounded-xl border border-line2 bg-pane2 px-2.5 py-1.5 text-xs font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal" title="reagendar">
-                          <IconClock size={13} /> Reagendar
-                        </button>
-                      </form>
+                      <ScheduleButton leadId={l.id} defaultValue={isoToBrLocalInput(l.scheduled_at)} label="Reagendar" />
                     </div>
                   </li>
                 ))}

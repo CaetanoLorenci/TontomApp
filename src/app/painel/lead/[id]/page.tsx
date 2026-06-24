@@ -167,22 +167,11 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
                   <span className="text-faint">Agendado — sem data definida</span>
                 )}
               </div>
-              <form action={scheduleLead} className="flex flex-wrap items-center gap-2">
-                <input type="hidden" name="leadId" value={lead.id} />
-                <input
-                  type="datetime-local"
-                  name="scheduledAt"
-                  required
-                  defaultValue={lead.scheduled_at ? isoToBrLocalInput(lead.scheduled_at) : undefined}
-                  className="num rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm focus:border-signal/60 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
-                >
-                  <IconClock size={14} /> {lead.scheduled_at ? "Reagendar" : "Definir"}
-                </button>
-              </form>
+              <ScheduleButton
+                leadId={lead.id}
+                defaultValue={lead.scheduled_at ? isoToBrLocalInput(lead.scheduled_at) : null}
+                label={lead.scheduled_at ? "Reagendar" : "Definir"}
+              />
             </div>
             {lead.scheduled_note && <p className="mt-2 text-xs text-mist">📝 {lead.scheduled_note}</p>}
           </section>
@@ -206,10 +195,7 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
                   </option>
                 ))}
               </select>
-              <button
-                type="submit"
-                className="rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
-              >
+              <button type="submit" className="btn btn-ghost">
                 Atribuir
               </button>
             </form>
@@ -247,10 +233,7 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
               placeholder="Adicionar nota interna…"
               className="flex-1 rounded-xl border border-line bg-transparent px-3 py-1.5 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
             />
-            <button
-              type="submit"
-              className="rounded-xl border border-line2 bg-pane2 px-3 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
-            >
+            <button type="submit" className="btn btn-ghost">
               Salvar
             </button>
           </form>
@@ -288,11 +271,7 @@ export default async function LeadConversa({ params }: { params: Promise<{ id: s
                       name="stage"
                       value={s}
                       className={
-                        s === "vendido"
-                          ? "flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]"
-                          : s === "perdido"
-                            ? "rounded-xl border border-line px-3.5 py-1.5 text-sm text-faint transition-colors hover:border-st-perd/50 hover:text-st-perd"
-                            : "flex items-center gap-1.5 rounded-xl border border-line2 bg-pane2 px-3.5 py-1.5 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal"
+                        s === "vendido" ? "btn btn-primary" : s === "perdido" ? "btn btn-danger" : "btn btn-ghost"
                       }
                     >
                       {s === "vendido" ? (

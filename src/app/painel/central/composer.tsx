@@ -75,7 +75,7 @@ export function CentralComposer() {
       />
 
       <div className="flex flex-wrap items-center gap-3">
-        <label className="cursor-pointer rounded-xl border border-line2 bg-pane2 px-3 py-2 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal">
+        <label className="btn btn-ghost">
           📎 Anexar criativos
           <input
             ref={fileRef}
@@ -98,7 +98,7 @@ export function CentralComposer() {
         <button
           type="submit"
           disabled={busy}
-          className="rounded-xl bg-signal px-4 py-2 text-sm font-semibold text-ink transition-transform hover:scale-[1.03] disabled:opacity-50"
+          className="btn btn-primary"
         >
           {busy ? "Enviando…" : "Enviar"}
         </button>

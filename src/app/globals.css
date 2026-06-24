@@ -57,6 +57,70 @@ option {
   color: var(--color-snow);
 }
 
+/* ── botões padronizados (1 só padrão no app) ──
+   Tamanho confortável; em telas de toque o alvo vira ≥44px (recomendação mobile). */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (pointer: coarse) {
+  .btn {
+    min-height: 44px;
+  }
+}
+/* primário (marca) */
+.btn-primary {
+  background: var(--color-signal);
+  color: var(--color-ink);
+}
+.btn-primary:not(:disabled):hover {
+  transform: scale(1.03);
+}
+/* secundário (contorno) */
+.btn-ghost {
+  border-color: var(--color-line2);
+  background: var(--color-pane2);
+  color: var(--color-snow);
+}
+.btn-ghost:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--color-signal) 50%, var(--color-line2));
+  color: var(--color-signal);
+}
+/* perigo (sutil) */
+.btn-danger {
+  border-color: var(--color-line);
+  color: var(--color-faint);
+}
+.btn-danger:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--color-st-perd) 50%, var(--color-line));
+  color: var(--color-st-perd);
+}
+/* variação compacta (chips, ações menores) */
+.btn-sm {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8125rem;
+  border-radius: 0.625rem;
+}
+
 /* títulos em Montserrat (identidade Amplia) */
 h1,
 h2,

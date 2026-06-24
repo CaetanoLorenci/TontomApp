@@ -3,9 +3,10 @@
 // e dar um respiro offline, (3) já deixar pronto o canal de push (passo de notificações).
 // Estratégia de navegação: network-first com fallback pro cache (dados sempre frescos online).
 
-const CACHE = "amplia-hub-v1";
+// ⚠️ Bumpar a versão a cada mudança de estratégia → o activate apaga o cache antigo
+// e evita o app servir arquivos velhos depois de um deploy (causa do "todo bugado").
+const CACHE = "amplia-hub-v2";
 // Só a tela offline é pré-cacheada (/painel exige auth → redireciona).
-// As demais páginas entram no cache em runtime, conforme visitadas.
 const APP_SHELL = ["/offline"];
 
 self.addEventListener("install", (event) => {
@@ -32,17 +33,10 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // não mexe em chamadas externas (Meta/Supabase)
 
-  // Navegações (HTML): rede primeiro, cache de socorro, e por último a tela offline.
+  // Navegações (HTML): SEMPRE da rede (nunca servir HTML velho — era o que bugava
+  // o app depois de um deploy). Sem internet → tela offline.
   if (req.mode === "navigate") {
-    event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-          return res;
-        })
-        .catch(async () => (await caches.match(req)) || (await caches.match("/offline")) || Response.error()),
-    );
+    event.respondWith(fetch(req).catch(async () => (await caches.match("/offline")) || Response.error()));
     return;
   }
 
