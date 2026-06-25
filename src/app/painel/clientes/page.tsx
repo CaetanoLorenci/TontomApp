@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getScope } from "@/lib/auth";
-import { createOrg, inviteToOrg } from "../actions";
+import { createOrg, inviteToOrg, addAdRoute, removeAdRoute } from "../actions";
 import { PanelNav } from "@/components/panel-nav";
 
 export const dynamic = "force-dynamic";
@@ -18,22 +18,30 @@ const MODE_LABEL: Record<string, string> = {
 
 type Org = { slug: string; name: string; mode: string };
 type Member = { org_slug: string; user_id: string };
+type Route = { id: string; match_type: string; match_value: string; org_slug: string };
 
 export default async function Clientes() {
   const { seesAll } = await getScope();
   if (!seesAll) notFound(); // cliente não acessa a gestão de clientes
 
   const sb = supabaseAdmin();
-  const [{ data: orgs }, { data: members }, { data: leadRows }] = await Promise.all([
+  const [{ data: orgs }, { data: members }, { data: leadRows }, { data: routeRows }] = await Promise.all([
     sb.from("organizations").select("slug, name, mode").order("created_at", { ascending: true }),
     sb.from("org_members").select("org_slug, user_id"),
     sb.from("leads").select("org_id"),
+    sb.from("ad_routes").select("id, match_type, match_value, org_slug"),
   ]);
 
   const memberCount = new Map<string, number>();
   for (const m of (members ?? []) as Member[]) memberCount.set(m.org_slug, (memberCount.get(m.org_slug) ?? 0) + 1);
   const leadCount = new Map<string, number>();
   for (const l of (leadRows ?? []) as { org_id: string }[]) leadCount.set(l.org_id, (leadCount.get(l.org_id) ?? 0) + 1);
+  const routesByOrg = new Map<string, Route[]>();
+  for (const r of (routeRows ?? []) as Route[]) {
+    const list = routesByOrg.get(r.org_slug) ?? [];
+    list.push(r);
+    routesByOrg.set(r.org_slug, list);
+  }
 
   return (
     <main className="relative min-h-screen">
@@ -107,13 +115,45 @@ export default async function Clientes() {
                     </form>
                   )}
                 </div>
+
+                {!isAmplia && (
+                  <div className="mt-3 border-t border-line pt-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-faint">
+                      Contas de anúncio (roteamento automático)
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {(routesByOrg.get(org.slug) ?? []).map((r) => (
+                        <span key={r.id} className="num inline-flex items-center gap-1.5 rounded-full bg-signal-soft px-2.5 py-1 text-[11px] text-signal">
+                          act_{r.match_value}
+                          <form action={removeAdRoute}>
+                            <input type="hidden" name="id" value={r.id} />
+                            <button type="submit" className="text-signal/60 hover:text-signal" title="Remover" aria-label="Remover">×</button>
+                          </form>
+                        </span>
+                      ))}
+                      <form action={addAdRoute} className="flex items-center gap-1.5">
+                        <input type="hidden" name="orgSlug" value={org.slug} />
+                        <input
+                          name="account"
+                          required
+                          placeholder="act_123… ou ID da conta"
+                          className="num w-44 rounded-xl border border-line bg-transparent px-3 py-1.5 text-xs placeholder:text-faint focus:border-signal/60 focus:outline-none"
+                        />
+                        <button type="submit" className="btn btn-ghost btn-sm">Mapear</button>
+                      </form>
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-faint">
+                      Leads vindos de anúncios dessa conta caem direto neste cliente. (O token de Ads da Amplia precisa ter acesso à conta.)
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}
         </section>
 
         <p className="mt-6 text-xs text-faint">
-          Pra dar acesso ao cliente sem depender de e-mail, use <Link href="/painel/acesso" className="text-signal underline">Acesso</Link> (define e-mail + senha e vincula ao cliente). O cliente vê só os dados da org dele. Pra rotear leads, abra a conversa do lead e use “Atribuir a cliente”.
+          Pra dar acesso ao cliente sem depender de e-mail, use <Link href="/painel/acesso" className="text-signal underline">Acesso</Link> (define e-mail + senha e vincula ao cliente). O cliente vê só os dados da org dele. Roteamento de leads: <strong>automático</strong> ao mapear a conta de anúncio acima; pra casos avulsos, abra a conversa do lead e use “Atribuir a cliente”.
         </p>
       </div>
     </main>

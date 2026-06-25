@@ -24,6 +24,16 @@ function revalidateLead(leadId: string) {
   revalidatePath(`/painel/lead/${leadId}`);
 }
 
+// Fronteira de escrita multi-tenant: confirma que o lead pertence ao escopo de quem chamou.
+// Amplia (seesAll) age em qualquer lead; cliente só nos da própria org. Bloqueia POST forjado
+// com leadId de outra org. Sem sessão (Basic Auth de transição) = Amplia.
+async function leadInScope(leadId: string): Promise<boolean> {
+  const scope = await getScope();
+  if (scope.seesAll) return true;
+  const { data } = await supabaseAdmin().from("leads").select("org_id").eq("id", leadId).maybeSingle();
+  return !!data && (data.org_id ?? "amplia") === scope.org;
+}
+
 export type ReplyResult = { ok: boolean; error?: string };
 
 // Traduz o erro da Cloud API pra algo acionável pro time.
@@ -50,6 +60,7 @@ export async function replyToLead(formData: FormData): Promise<ReplyResult> {
   const leadId = String(formData.get("leadId") ?? "");
   const text = String(formData.get("text") ?? "").trim();
   if (!leadId || !text) return { ok: false, error: "Mensagem vazia." };
+  if (!(await leadInScope(leadId))) return { ok: false, error: "Sem permissão." };
 
   const sb = supabaseAdmin();
   const { data: lead } = await sb.from("leads").select("phone").eq("id", leadId).maybeSingle();
@@ -91,6 +102,7 @@ export async function updateLead(formData: FormData) {
   const value = rawValue ? Number(rawValue) : null;
   const scheduledRaw = String(formData.get("scheduledAt") ?? "").trim();
   if (!leadId || !stage) return;
+  if (!(await leadInScope(leadId))) return;
 
   // humano pode corrigir pra qualquer estágio (onlyForward: false)
   await advanceStage(leadId, stage, Number.isFinite(value as number) ? value : null, {
@@ -218,6 +230,32 @@ export async function setLeadOrg(formData: FormData) {
   await sb.from("capi_events").update({ org_id: orgSlug }).eq("lead_id", leadId);
   if (lead?.click_id) await sb.from("clicks").update({ org_id: orgSlug }).eq("id", lead.click_id);
   revalidateLead(leadId);
+}
+
+// Mapeia uma CONTA de anúncio a um cliente → leads desse anúncio caem sozinhos na org.
+// Aceita "act_123" ou "123" (normaliza pra dígitos, que é como a Graph devolve account_id).
+export async function addAdRoute(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const orgSlug = String(formData.get("orgSlug") ?? "").trim();
+  const value = String(formData.get("account") ?? "").replace(/[^0-9]/g, "");
+  if (!orgSlug || !value) return;
+  await supabaseAdmin()
+    .from("ad_routes")
+    .upsert(
+      { match_type: "account", match_value: value, org_slug: orgSlug, label: `Conta act_${value}` },
+      { onConflict: "match_type,match_value" },
+    );
+  revalidatePath("/painel/clientes");
+}
+
+export async function removeAdRoute(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await supabaseAdmin().from("ad_routes").delete().eq("id", id);
+  revalidatePath("/painel/clientes");
 }
 
 // ── Notificações push ───────────────────────────────────────
@@ -395,6 +433,7 @@ export async function addNote(formData: FormData) {
   const leadId = String(formData.get("leadId") ?? "");
   const body = String(formData.get("body") ?? "").trim();
   if (!leadId || !body) return;
+  if (!(await leadInScope(leadId))) return;
   await supabaseAdmin().from("lead_notes").insert({ lead_id: leadId, body });
   revalidatePath(`/painel/lead/${leadId}`);
 }
@@ -403,6 +442,7 @@ export async function addTag(formData: FormData) {
   const leadId = String(formData.get("leadId") ?? "");
   const tag = String(formData.get("tag") ?? "").trim().toLowerCase().slice(0, 30);
   if (!leadId || !tag) return;
+  if (!(await leadInScope(leadId))) return;
   const sb = supabaseAdmin();
   const { data: lead } = await sb.from("leads").select("tags").eq("id", leadId).maybeSingle();
   const tags = new Set<string>((lead?.tags as string[] | null) ?? []);
@@ -415,6 +455,7 @@ export async function removeTag(formData: FormData) {
   const leadId = String(formData.get("leadId") ?? "");
   const tag = String(formData.get("tag") ?? "");
   if (!leadId || !tag) return;
+  if (!(await leadInScope(leadId))) return;
   const sb = supabaseAdmin();
   const { data: lead } = await sb.from("leads").select("tags").eq("id", leadId).maybeSingle();
   const tags = ((lead?.tags as string[] | null) ?? []).filter((t) => t !== tag);
@@ -426,6 +467,7 @@ export async function removeTag(formData: FormData) {
 // value: usado ao mover pra "vendido" → o Purchase já sai COM o valor (ROI no Meta).
 export async function moveLeadStage(leadId: string, stage: string, value?: number | null) {
   if (!leadId || !stage) return;
+  if (!(await leadInScope(leadId))) return;
   await advanceStage(leadId, stage, value ?? null, { onlyForward: false, source: "painel" });
   revalidateLead(leadId);
 }
@@ -437,6 +479,7 @@ export async function scheduleLead(formData: FormData) {
   const scheduledRaw = String(formData.get("scheduledAt") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim() || null;
   if (!leadId || !scheduledRaw) return;
+  if (!(await leadInScope(leadId))) return;
   const iso = brLocalToIso(scheduledRaw);
   if (!iso) return;
 

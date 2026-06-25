@@ -13,6 +13,8 @@ export type AdCreative = {
   ad_name: string | null;
   adset_name: string | null;
   campaign_name: string | null;
+  ad_account_id: string | null; // conta de anúncio (dígitos, sem "act_") — chave de roteamento
+  campaign_id: string | null;
   title: string | null;
   body: string | null;
   image_path: string | null;
@@ -24,8 +26,9 @@ export type AdCreative = {
 type GraphAd = {
   name?: string;
   effective_status?: string;
+  account_id?: string;
   adset?: { name?: string };
-  campaign?: { name?: string };
+  campaign?: { id?: string; name?: string };
   creative?: {
     thumbnail_url?: string;
     image_url?: string;
@@ -53,7 +56,7 @@ async function fetchFromMeta(adId: string): Promise<GraphAd | null> {
   const token = process.env.META_ADS_TOKEN;
   if (!token) return null;
   const fields =
-    "name,effective_status,adset{name},campaign{name}," +
+    "name,effective_status,account_id,adset{name},campaign{id,name}," +
     "creative{thumbnail_url,image_url,title,body,instagram_permalink_url,object_story_spec}";
   const url = `https://graph.facebook.com/${GRAPH}/${adId}?fields=${encodeURIComponent(fields)}`;
   try {
@@ -107,6 +110,8 @@ export async function cacheAdCreative(sb: SupabaseClient, adId: string): Promise
       ad_name: ad.name ?? null,
       adset_name: ad.adset?.name ?? null,
       campaign_name: ad.campaign?.name ?? null,
+      ad_account_id: ad.account_id ?? null,
+      campaign_id: ad.campaign?.id ?? null,
       title: ad.creative?.title ?? null,
       body: ad.creative?.body ?? null,
       image_path: imagePath,
@@ -221,6 +226,46 @@ export async function getAdsPerformance(datePreset = "last_30d"): Promise<AdPerf
   } catch {
     return [];
   }
+}
+
+// ── Roteamento: descobre a org do cliente a partir do anúncio ──
+// Cada cliente roda na PRÓPRIA conta de anúncio → ad_account é a chave estável.
+// Precedência: anúncio específico > campanha > conta. Retorna o slug da org ou null.
+// Reusa o cache de ad_creatives (já preenchido por upsertCtwaClick) — sem refetch no caminho feliz.
+export async function resolveOrgForAd(sb: SupabaseClient, adId: string | null): Promise<string | null> {
+  if (!adId) return null;
+
+  // garante conta/campanha resolvidas no cache (1ª vez busca na Meta; depois é leitura)
+  let { data } = await sb
+    .from("ad_creatives")
+    .select("ad_account_id, campaign_id")
+    .eq("ad_id", adId)
+    .maybeSingle();
+  if (!data?.ad_account_id) {
+    await cacheAdCreative(sb, adId);
+    ({ data } = await sb
+      .from("ad_creatives")
+      .select("ad_account_id, campaign_id")
+      .eq("ad_id", adId)
+      .maybeSingle());
+  }
+
+  const candidates: [string, string][] = [
+    ["ad", adId],
+    ["campaign", (data?.campaign_id as string) ?? ""],
+    ["account", (data?.ad_account_id as string) ?? ""],
+  ];
+  for (const [type, value] of candidates) {
+    if (!value) continue;
+    const { data: route } = await sb
+      .from("ad_routes")
+      .select("org_slug")
+      .eq("match_type", type)
+      .eq("match_value", value)
+      .maybeSingle();
+    if (route?.org_slug) return route.org_slug as string;
+  }
+  return null;
 }
 
 // Lê vários do cache de uma vez, SEM refresh (rápido, pra listas). Map ad_id -> criativo.

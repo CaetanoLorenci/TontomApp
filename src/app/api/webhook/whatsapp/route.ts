@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { advanceStage, extractValue } from "@/lib/conversion";
-import { cacheAdCreative } from "@/lib/meta-ads";
+import { cacheAdCreative, resolveOrgForAd } from "@/lib/meta-ads";
 import { sendPushToOrgs } from "@/lib/push";
 import {
   cloudText,
@@ -151,8 +151,31 @@ async function handleIncoming(sb: SB, m: CloudMessage, name: string | null) {
   // raw debug: guarda o objeto cru da mensagem (inclui referral) p/ inspeção
   await saveMessage(sb, leadId, phone, "in", text, m.id, m as unknown as Record<string, unknown>);
 
+  // roteamento automático: cada cliente roda na própria conta de anúncio.
+  // Se o anúncio de origem estiver mapeado (ad_routes), o lead cai direto na org do cliente.
+  if (leadId && m.referral?.source_id) {
+    await autoRouteLead(sb, leadId, m.referral.source_id);
+  }
+
   // notifica o time (push): lead aguardando resposta
   if (leadId) await notifyNewMessage(sb, leadId, name, phone, text);
+}
+
+/* Atribui o lead à org do cliente conforme o anúncio de origem (ad_routes).
+   Só move leads ainda NÃO atribuídos (org 'amplia') — não rouba lead já roteado/manual. */
+async function autoRouteLead(sb: SB, leadId: string, adId: string) {
+  try {
+    const { data: lead } = await sb.from("leads").select("org_id, click_id").eq("id", leadId).maybeSingle();
+    if (!lead || (lead.org_id && lead.org_id !== "amplia")) return; // já tem dono
+    const org = await resolveOrgForAd(sb, adId);
+    if (!org || org === "amplia") return;
+    await sb.from("leads").update({ org_id: org }).eq("id", leadId);
+    await sb.from("messages").update({ org_id: org }).eq("lead_id", leadId);
+    await sb.from("capi_events").update({ org_id: org }).eq("lead_id", leadId);
+    if (lead.click_id) await sb.from("clicks").update({ org_id: org }).eq("id", lead.click_id);
+  } catch (e) {
+    console.error("[cloud-webhook] auto-route falhou:", e);
+  }
 }
 
 /* Push pro time quando um lead manda mensagem (notifica Amplia + a org do lead). */
