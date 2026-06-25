@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getScope, getSessionUser } from "@/lib/auth";
+import { sendPushToOrgs } from "@/lib/push";
 
 const countWords = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 
@@ -29,15 +30,16 @@ export async function createCriativo(formData: FormData) {
 async function guardCriativo(id: string) {
   const { org, seesAll } = await getScope();
   const sb = supabaseAdmin();
-  const { data: cr } = await sb.from("criativos").select("id, org_id").eq("id", id).maybeSingle();
+  const { data: cr } = await sb.from("criativos").select("id, org_id, titulo").eq("id", id).maybeSingle();
   if (!cr) throw new Error("Criativo não encontrado.");
-  if (!seesAll && (cr as { org_id: string }).org_id !== org) throw new Error("Sem permissão.");
-  return sb;
+  const row = cr as { id: string; org_id: string; titulo: string };
+  if (!seesAll && row.org_id !== org) throw new Error("Sem permissão.");
+  return { sb, cr: row, seesAll };
 }
 
 export async function aprovarCriativo(formData: FormData) {
   const id = String(formData.get("id") || "");
-  const sb = await guardCriativo(id);
+  const { sb, cr, seesAll } = await guardCriativo(id);
   const user = await getSessionUser();
   await sb.from("criativos").update({
     status_aprovacao: "aprovado",
@@ -45,6 +47,15 @@ export async function aprovarCriativo(formData: FormData) {
     avaliado_em: new Date().toISOString(),
     avaliado_por: user?.id ?? null,
   }).eq("id", id);
+  // cliente aprovou → avisa a Amplia
+  if (!seesAll) {
+    await sendPushToOrgs(["amplia"], {
+      title: "✅ Criativo aprovado",
+      body: `${cr.org_id}: "${cr.titulo}"`,
+      url: "/painel/criativos",
+      tag: `criativo-${id}`,
+    });
+  }
   revalidatePath("/painel/criativos");
 }
 
@@ -54,7 +65,7 @@ export async function reprovarCriativo(formData: FormData) {
   if (countWords(motivo) < 25) {
     throw new Error("O motivo da reprovação precisa ter ao menos 25 palavras.");
   }
-  const sb = await guardCriativo(id);
+  const { sb, cr, seesAll } = await guardCriativo(id);
   const user = await getSessionUser();
   await sb.from("criativos").update({
     status_aprovacao: "reprovado",
@@ -62,6 +73,15 @@ export async function reprovarCriativo(formData: FormData) {
     avaliado_em: new Date().toISOString(),
     avaliado_por: user?.id ?? null,
   }).eq("id", id);
+  // cliente reprovou → avisa a Amplia (com início do motivo)
+  if (!seesAll) {
+    await sendPushToOrgs(["amplia"], {
+      title: "❌ Criativo reprovado",
+      body: `${cr.org_id}: "${cr.titulo}" — ${motivo.length > 60 ? motivo.slice(0, 60) + "…" : motivo}`,
+      url: "/painel/criativos",
+      tag: `criativo-${id}`,
+    });
+  }
   revalidatePath("/painel/criativos");
 }
 
