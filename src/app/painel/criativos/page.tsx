@@ -81,7 +81,7 @@ export default async function Criativos() {
               <textarea name="descricao" placeholder="Descrição (opcional)"
                 className="rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none sm:col-span-2" />
               <div className="sm:col-span-2">
-                <button type="submit" className="rounded-xl bg-signal px-4 py-2 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]">
+                <button type="submit" className="btn btn-primary">
                   Adicionar criativo
                 </button>
               </div>

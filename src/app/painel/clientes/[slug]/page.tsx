@@ -60,7 +60,7 @@ export default async function ClienteProfile({ params }: { params: Promise<{ slu
             <label className="block sm:col-span-2"><span className="text-xs text-faint">Tom de voz</span><input name="tom_voz" defaultValue={org.tom_voz ?? ""} className={inputCls} /></label>
             <label className="block sm:col-span-2"><span className="text-xs text-faint">Observações</span><textarea name="observacoes" defaultValue={org.observacoes ?? ""} className={inputCls} /></label>
             <label className="block sm:col-span-2"><span className="text-xs text-faint">Histórico relevante</span><textarea name="historico" defaultValue={org.historico ?? ""} className={inputCls} /></label>
-            <div className="sm:col-span-2"><button type="submit" className="rounded-xl bg-signal px-4 py-2 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]">Salvar perfil</button></div>
+            <div className="sm:col-span-2"><button type="submit" className="btn btn-primary">Salvar perfil</button></div>
           </form>
         </section>
 
@@ -95,7 +95,7 @@ export default async function ClienteProfile({ params }: { params: Promise<{ slu
             </select>
             <input name="volume" placeholder="Volume (ex.: 4/mês)"
               className="rounded-xl border border-line bg-transparent px-3 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none" />
-            <button type="submit" className="rounded-xl border border-line2 bg-pane2 px-3 py-2 text-sm font-medium text-snow transition-colors hover:border-signal/50 hover:text-signal">+ Entregável</button>
+            <button type="submit" className="btn btn-ghost">+ Entregável</button>
           </form>
         </section>
       </div>

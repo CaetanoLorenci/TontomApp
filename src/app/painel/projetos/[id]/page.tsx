@@ -70,7 +70,7 @@ export default async function ProjetoWorkspace({ params }: { params: Promise<{ i
                   <textarea name="report" defaultValue={p.report ?? ""} placeholder="Atualizações, marcos, bloqueios, próximos passos…"
                     className="mt-1 min-h-36 w-full rounded-xl border border-line bg-transparent px-3 py-2 text-sm focus:border-signal/60 focus:outline-none" />
                 </div>
-                <button type="submit" className="rounded-xl bg-signal px-4 py-2 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]">Salvar</button>
+                <button type="submit" className="btn btn-primary">Salvar</button>
               </form>
             </section>
             <form action={deleteProjeto} className="mt-3">

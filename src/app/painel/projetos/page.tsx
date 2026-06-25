@@ -59,7 +59,7 @@ export default async function Projetos() {
               </select>
               <input name="prazo" type="date" style={{ colorScheme: "dark" }}
                 className="rounded-xl border border-line bg-transparent px-3 py-2 text-sm focus:border-signal/60 focus:outline-none" />
-              <button type="submit" className="rounded-xl bg-signal px-4 py-2 text-sm font-semibold text-ink transition-transform hover:scale-[1.03]">Criar</button>
+              <button type="submit" className="btn btn-primary">Criar</button>
             </form>
           </section>
         )}
