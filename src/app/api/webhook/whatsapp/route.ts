@@ -63,9 +63,12 @@ async function handleValue(sb: SB, value: CloudValue | undefined) {
     if (c.wa_id && c.profile?.name) nameByWaId.set(c.wa_id, c.profile.name);
   }
 
+  // número (Cloud API) que RECEBEU a mensagem → identifica de qual cliente é a caixa de entrada
+  const phoneNumberId = value.metadata?.phone_number_id ?? null;
+
   // mensagens recebidas (do lead)
   for (const m of value.messages ?? []) {
-    await handleIncoming(sb, m, nameByWaId.get(m.from) ?? null);
+    await handleIncoming(sb, m, nameByWaId.get(m.from) ?? null, phoneNumberId);
   }
 
   // mensagens enviadas pelo time no app (coexistência) → gatilhos
@@ -105,7 +108,7 @@ async function handleStatus(sb: SB, st: WaStatus) {
 }
 
 /* ── mensagem do LEAD: cria/atribui (CTWA nativo) + salva ── */
-async function handleIncoming(sb: SB, m: CloudMessage, name: string | null) {
+async function handleIncoming(sb: SB, m: CloudMessage, name: string | null, phoneNumberId: string | null) {
   const phone = m.from?.replace(/\D/g, "");
   if (!phone) return;
   const text = cloudText(m);
@@ -151,24 +154,35 @@ async function handleIncoming(sb: SB, m: CloudMessage, name: string | null) {
   // raw debug: guarda o objeto cru da mensagem (inclui referral) p/ inspeção
   await saveMessage(sb, leadId, phone, "in", text, m.id, m as unknown as Record<string, unknown>);
 
-  // roteamento automático: cada cliente roda na própria conta de anúncio.
-  // Se o anúncio de origem estiver mapeado (ad_routes), o lead cai direto na org do cliente.
-  if (leadId && m.referral?.source_id) {
-    await autoRouteLead(sb, leadId, m.referral.source_id);
+  // roteamento automático do lead → org do cliente. Precedência:
+  //  1) NÚMERO que recebeu (cliente com número próprio: lead que cai no número dele É dele);
+  //  2) conta de anúncio de origem (ad_routes) — pra cliente que compartilha o número da Amplia.
+  if (leadId) {
+    const orgByNumber = phoneNumberId ? await orgForNumber(sb, phoneNumberId) : null;
+    const org = orgByNumber ?? (m.referral?.source_id ? await resolveOrgForAd(sb, m.referral.source_id) : null);
+    if (org && org !== "amplia") await autoRouteLead(sb, leadId, org);
   }
 
   // notifica o time (push): lead aguardando resposta
   if (leadId) await notifyNewMessage(sb, leadId, name, phone, text);
 }
 
-/* Atribui o lead à org do cliente conforme o anúncio de origem (ad_routes).
-   Só move leads ainda NÃO atribuídos (org 'amplia') — não rouba lead já roteado/manual. */
-async function autoRouteLead(sb: SB, leadId: string, adId: string) {
+/* Descobre a org dona de um número de WhatsApp (Cloud API phone_number_id). */
+async function orgForNumber(sb: SB, phoneNumberId: string): Promise<string | null> {
+  const { data } = await sb
+    .from("organizations")
+    .select("slug")
+    .eq("wa_phone_number_id", phoneNumberId)
+    .maybeSingle();
+  return (data?.slug as string | null) ?? null;
+}
+
+/* Atribui o lead (e seus dados) à org do cliente. Só move leads ainda NÃO atribuídos
+   (org 'amplia') — não rouba lead já roteado/manual. */
+async function autoRouteLead(sb: SB, leadId: string, org: string) {
   try {
     const { data: lead } = await sb.from("leads").select("org_id, click_id").eq("id", leadId).maybeSingle();
     if (!lead || (lead.org_id && lead.org_id !== "amplia")) return; // já tem dono
-    const org = await resolveOrgForAd(sb, adId);
-    if (!org || org === "amplia") return;
     await sb.from("leads").update({ org_id: org }).eq("id", leadId);
     await sb.from("messages").update({ org_id: org }).eq("lead_id", leadId);
     await sb.from("capi_events").update({ org_id: org }).eq("lead_id", leadId);

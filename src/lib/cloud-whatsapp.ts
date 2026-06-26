@@ -8,8 +8,15 @@ const GRAPH = process.env.META_GRAPH_VERSION || "v21.0"; // || (não ??): env va
 export type CloudSendResult = { ok: boolean; status: number; body: unknown };
 
 // Envia mensagem de texto livre (válido dentro da janela de 24h / 72h CTWA).
-export async function sendCloudText(toWaId: string, body: string): Promise<CloudSendResult> {
-  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+// fromPhoneId: número (Cloud API phone_number_id) DE ONDE enviar — multi-cliente.
+// Omitido = número padrão da Amplia (env). O token (system-user do Business da Amplia)
+// acessa todos os números sob a mesma WABA, então UM token serve pra todos.
+export async function sendCloudText(
+  toWaId: string,
+  body: string,
+  fromPhoneId?: string | null,
+): Promise<CloudSendResult> {
+  const phoneId = fromPhoneId || process.env.WHATSAPP_PHONE_NUMBER_ID;
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   if (!phoneId || !token) {
     throw new Error("Faltando WHATSAPP_PHONE_NUMBER_ID ou WHATSAPP_ACCESS_TOKEN.");

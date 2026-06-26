@@ -63,11 +63,23 @@ export async function replyToLead(formData: FormData): Promise<ReplyResult> {
   if (!(await leadInScope(leadId))) return { ok: false, error: "Sem permissão." };
 
   const sb = supabaseAdmin();
-  const { data: lead } = await sb.from("leads").select("phone").eq("id", leadId).maybeSingle();
+  const { data: lead } = await sb.from("leads").select("phone, org_id").eq("id", leadId).maybeSingle();
   if (!lead?.phone) return { ok: false, error: "Lead sem telefone registrado." };
 
+  // multi-número: responde A PARTIR do número da org do lead (cada cliente tem o seu).
+  // Se a org não tiver número próprio, cai no número padrão da Amplia (env).
+  let fromPhoneId: string | null = null;
+  if (lead.org_id) {
+    const { data: org } = await sb
+      .from("organizations")
+      .select("wa_phone_number_id")
+      .eq("slug", lead.org_id)
+      .maybeSingle();
+    fromPhoneId = (org?.wa_phone_number_id as string | null) ?? null;
+  }
+
   try {
-    const res = await sendCloudText(lead.phone, text);
+    const res = await sendCloudText(lead.phone, text, fromPhoneId);
     if (res.ok) {
       const wamid = (res.body as { messages?: { id?: string }[] })?.messages?.[0]?.id ?? null;
       await sb.from("messages").insert({
@@ -255,6 +267,18 @@ export async function removeAdRoute(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   await supabaseAdmin().from("ad_routes").delete().eq("id", id);
+  revalidatePath("/painel/clientes");
+}
+
+// Define (ou limpa) o número de WhatsApp próprio do cliente (Cloud API phone_number_id).
+// Lead que chega nesse número cai na org dele; respostas saem desse número. Vazio = limpa.
+export async function setOrgNumber(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const orgSlug = String(formData.get("orgSlug") ?? "").trim();
+  const value = String(formData.get("phoneId") ?? "").replace(/[^0-9]/g, "") || null;
+  if (!orgSlug) return;
+  await supabaseAdmin().from("organizations").update({ wa_phone_number_id: value }).eq("slug", orgSlug);
   revalidatePath("/painel/clientes");
 }
 

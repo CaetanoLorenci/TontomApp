@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getScope } from "@/lib/auth";
-import { createOrg, inviteToOrg, addAdRoute, removeAdRoute } from "../actions";
+import { createOrg, inviteToOrg, addAdRoute, removeAdRoute, setOrgNumber } from "../actions";
 import { PanelNav } from "@/components/panel-nav";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ const MODE_LABEL: Record<string, string> = {
   completo: "Completo (CTWA)",
 };
 
-type Org = { slug: string; name: string; mode: string };
+type Org = { slug: string; name: string; mode: string; wa_phone_number_id: string | null };
 type Member = { org_slug: string; user_id: string };
 type Route = { id: string; match_type: string; match_value: string; org_slug: string };
 
@@ -26,7 +26,7 @@ export default async function Clientes() {
 
   const sb = supabaseAdmin();
   const [{ data: orgs }, { data: members }, { data: leadRows }, { data: routeRows }] = await Promise.all([
-    sb.from("organizations").select("slug, name, mode").order("created_at", { ascending: true }),
+    sb.from("organizations").select("slug, name, mode, wa_phone_number_id").order("created_at", { ascending: true }),
     sb.from("org_members").select("org_slug, user_id"),
     sb.from("leads").select("org_id"),
     sb.from("ad_routes").select("id, match_type, match_value, org_slug"),
@@ -144,6 +144,26 @@ export default async function Clientes() {
                     </div>
                     <p className="mt-1.5 text-[11px] text-faint">
                       Leads vindos de anúncios dessa conta caem direto neste cliente. (O token de Ads da Amplia precisa ter acesso à conta.)
+                    </p>
+
+                    <div className="mt-3 text-[11px] font-semibold uppercase tracking-widest text-faint">
+                      Número de WhatsApp próprio (Completo / CTWA)
+                    </div>
+                    <form action={setOrgNumber} className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <input type="hidden" name="orgSlug" value={org.slug} />
+                      <input
+                        name="phoneId"
+                        defaultValue={org.wa_phone_number_id ?? ""}
+                        placeholder="phone_number_id da Cloud API"
+                        className="num w-56 rounded-xl border border-line bg-transparent px-3 py-1.5 text-xs placeholder:text-faint focus:border-signal/60 focus:outline-none"
+                      />
+                      <button type="submit" className="btn btn-ghost btn-sm">Salvar número</button>
+                      {org.wa_phone_number_id && (
+                        <span className="text-[11px] text-emerald-400">● número próprio ativo</span>
+                      )}
+                    </form>
+                    <p className="mt-1.5 text-[11px] text-faint">
+                      Com número próprio: leads que chegam nele caem aqui e as respostas saem desse número (a marca do cliente, não a da Amplia). Vazio = usa o número da Amplia.
                     </p>
                   </div>
                 )}
