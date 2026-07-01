@@ -246,6 +246,10 @@ export default async function Painel({
   const vendas = leads.filter((l) => l.stage === "vendido");
   const txConversao = total ? Math.round((vendas.length / total) * 100) : 0;
   const faturamento = vendas.reduce((s, l) => s + (l.value ?? 0), 0);
+  // leads ativos aguardando resposta (última msg foi do lead) — alerta anti-perda
+  const needsReplyCount = leads.filter(
+    (l) => l.last_message_dir === "in" && l.stage !== "vendido" && l.stage !== "perdido",
+  ).length;
 
   /* origens */
   type OrigemAgg = { conversas: number; qualificadas: number; vendas: number; receita: number };
@@ -319,6 +323,20 @@ export default async function Painel({
       />
 
       <div className="relative z-10 mx-auto max-w-6xl px-6 py-8">
+        {/* ── alerta: leads aguardando resposta (anti-perda; notificação ainda falha) ── */}
+        {needsReplyCount > 0 && (
+          <a
+            href="#conversas"
+            className="card anim-up mb-4 flex items-center gap-3 !border-signal/40 bg-signal-soft p-4 transition-colors hover:!border-signal/60"
+          >
+            <span className="live-dot inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-signal" />
+            <span className="text-sm font-semibold text-snow">
+              {needsReplyCount} {needsReplyCount === 1 ? "conversa aguardando" : "conversas aguardando"} sua resposta
+            </span>
+            <span className="ml-auto hidden text-xs text-faint sm:block">responder mantém a janela de 24h aberta →</span>
+          </a>
+        )}
+
         {/* ── métricas ── */}
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {stats.map((s, i) => (
@@ -449,7 +467,7 @@ export default async function Painel({
         </section>
 
         {/* ── conversas ── */}
-        <section className="mt-6">
+        <section id="conversas" className="mt-6 scroll-mt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-faint">
               <IconChat size={14} />
@@ -506,12 +524,16 @@ export default async function Painel({
           {leads.length === 0 ? (
             <EmptyState
               className="mt-3"
-              title="Nenhuma conversa no período."
+              title={seesAll ? "Nenhuma conversa no período." : "Nenhuma conversa ainda."}
               hint={
-                <>
-                  Abra <code className="rounded bg-pane2 px-1.5 py-0.5 text-signal">/r?utm_campaign=teste</code> pra
-                  simular um clique de anúncio.
-                </>
+                seesAll ? (
+                  <>
+                    Abra <code className="rounded bg-pane2 px-1.5 py-0.5 text-signal">/r?utm_campaign=teste</code> pra
+                    simular um clique de anúncio.
+                  </>
+                ) : (
+                  "Seus leads de anúncio aparecem aqui assim que a campanha começar a rodar. Deixe o app aberto que a gente cuida do resto."
+                )
               }
             />
           ) : displayLeads.length === 0 ? (
