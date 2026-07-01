@@ -35,13 +35,18 @@ Mesmo repo, mesmo banco Supabase, mesmo deploy Vercel. **Toda a disciplina abaix
 - **Não refatore "pra modularizar"** sem pedido. Faça a mudança mínima que resolve a tarefa.
 - Travou ou em dúvida depois de ~2 tentativas? **Pare e reporte pro Caetano** em vez de insistir.
 
-## 5. Commit / push / migração
-- Commits pequenos e focados; mensagem clara do QUE mudou. **`npm run build` limpo ANTES de pushar.**
-- Push no fim → deploy automático na Vercel.
-- **Migração de banco = a coisa mais perigosa pros dois lados.** Sempre **aditiva e idempotente** (`add column if not exists`, `create table if not exists`), no seu domínio. Ao rodar uma, **AVISE no bloco 📮** — o outro Claude precisa saber que o schema mudou.
+## 5. BASE PROTEGIDA: `main` = fonte da verdade
+- A branch **`main` é a BASE**, guardada pelo lado do **Caetano (administrador)**, e é a **única** que faz deploy na Vercel (produção). Nada entra em produção sem passar por ela.
+- **Lado do JOÃO:** trabalhe SEMPRE num **branch próprio** (`git checkout -b feat/nome-da-tarefa`), **NUNCA direto na `main`**. Ao terminar, **abra um Pull Request** — não mescle sozinho. O lado do Caetano revisa e mescla. Assim **nada que o João faça toca a base/produção até ser revisado** (impossível quebrar a base por engano).
+- **Lado do CAETANO:** guarda a `main`; revisa e mescla os PRs do João (confere território + `npm run build` + sem segredo).
+- **Antes de qualquer trabalho, os dois:** `git pull origin main` (atualiza a base antes de ramificar/commitar). Isso evita "erro de continuação".
+
+## 6. Commits / build / migração
+- Commits pequenos e focados; mensagem clara do QUE mudou. **`npm run build` limpo ANTES de pushar/abrir PR.**
+- **Migração de banco = a coisa mais perigosa pros dois lados** (banco é um só, compartilhado). Sempre **aditiva e idempotente** (`add column if not exists`, `create table if not exists`), no seu domínio. Ao rodar uma, **AVISE no bloco 📮** — o outro Claude precisa saber que o schema mudou.
 - Segredos (tokens) nunca no código — só em `.env.local` (gitignored) e nas Env Vars da Vercel.
 
-## 6. 📮 Protocolo de sincronização
+## 7. 📮 Protocolo de sincronização
 No **fim de toda sessão**, escreva um bloco:
 
 ```
