@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import crypto from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabase";
 import { advanceStage, extractValue } from "@/lib/conversion";
 import { cacheAdCreative, resolveOrgForAd } from "@/lib/meta-ads";
@@ -31,10 +32,31 @@ export async function GET(req: NextRequest) {
   return new NextResponse("forbidden", { status: 403 });
 }
 
+// Verifica a assinatura X-Hub-Signature-256 do Meta (HMAC-SHA256 do corpo CRU com o App Secret).
+// Guardado por META_APP_SECRET: setou → valida de verdade; vazio → pula (com aviso) pra não travar
+// em transição. Sem isso, qualquer um que ache a URL injeta lead/conversão falsa.
+function verifyMetaSignature(raw: string, header: string | null): boolean {
+  const secret = process.env.META_APP_SECRET;
+  if (!secret) {
+    console.warn("[cloud-webhook] META_APP_SECRET não setado — assinatura NÃO verificada");
+    return true;
+  }
+  if (!header?.startsWith("sha256=")) return false;
+  const expected = "sha256=" + crypto.createHmac("sha256", secret).update(raw, "utf8").digest("hex");
+  const a = Buffer.from(header);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 export async function POST(req: NextRequest) {
+  const raw = await req.text();
+  if (!verifyMetaSignature(raw, req.headers.get("x-hub-signature-256"))) {
+    return new NextResponse("invalid signature", { status: 401 });
+  }
+
   let body: CloudWebhook;
   try {
-    body = (await req.json()) as CloudWebhook;
+    body = JSON.parse(raw) as CloudWebhook;
   } catch {
     return NextResponse.json({ ok: true, ignored: "invalid json" });
   }
