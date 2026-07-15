@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendCapiEvent, eventForStage } from "@/lib/meta-capi";
+import { orgWaCreds } from "@/lib/org-creds";
 
 // Núcleo da conversão: avança o estágio de um lead e devolve o evento pro Meta.
 // Usado pelo painel (clique humano) e pelo webhook (gatilho automático).
@@ -27,7 +28,7 @@ export async function advanceStage(
 
   const { data: lead } = await sb
     .from("leads")
-    .select("id, phone, stage, value, clicks(fbc, fbclid, ctwa_clid, created_at)")
+    .select("id, phone, stage, value, org_id, clicks(fbc, fbclid, ctwa_clid, created_at)")
     .eq("id", leadId)
     .maybeSingle();
   if (!lead) return { ok: false, error: "lead não encontrado" };
@@ -75,6 +76,8 @@ export async function advanceStage(
     .maybeSingle();
   if (already) return { ok: true, advanced: true, capiSent: false };
   try {
+    // org com WABA própria → evento CTWA vai pro dataset/WABA DELA (fallback = Amplia)
+    const creds = ctwaClid ? await orgWaCreds(lead.org_id as string | null) : undefined;
     const result = await sendCapiEvent({
       eventName,
       eventId,
@@ -82,6 +85,7 @@ export async function advanceStage(
       fbc,
       ctwaClid,
       value: eventName === "Purchase" ? (value ?? lead.value) : null,
+      ...(creds ? { creds } : {}),
     });
     await sb.from("capi_events").insert({
       lead_id: leadId,

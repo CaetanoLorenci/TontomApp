@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getScope } from "@/lib/auth";
-import { createOrg, inviteToOrg, addAdRoute, removeAdRoute, setOrgNumber } from "../actions";
+import { createOrg, inviteToOrg, addAdRoute, removeAdRoute, setOrgNumber, setOrgWaba } from "../actions";
 import { PanelNav } from "@/components/panel-nav";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,15 @@ const MODE_LABEL: Record<string, string> = {
   completo: "Completo (CTWA)",
 };
 
-type Org = { slug: string; name: string; mode: string; wa_phone_number_id: string | null };
+type Org = {
+  slug: string;
+  name: string;
+  mode: string;
+  wa_phone_number_id: string | null;
+  waba_id: string | null;
+  ctwa_dataset_id: string | null;
+  wa_access_token: string | null; // só pra indicar "definido" — NUNCA renderizar o valor
+};
 type Member = { org_slug: string; user_id: string };
 type Route = { id: string; match_type: string; match_value: string; org_slug: string };
 
@@ -26,7 +34,7 @@ export default async function Clientes() {
 
   const sb = supabaseAdmin();
   const [{ data: orgs }, { data: members }, { data: leadRows }, { data: routeRows }] = await Promise.all([
-    sb.from("organizations").select("slug, name, mode, wa_phone_number_id").order("created_at", { ascending: true }),
+    sb.from("organizations").select("slug, name, mode, wa_phone_number_id, waba_id, ctwa_dataset_id, wa_access_token").order("created_at", { ascending: true }),
     sb.from("org_members").select("org_slug, user_id"),
     sb.from("leads").select("org_id"),
     sb.from("ad_routes").select("id, match_type, match_value, org_slug"),
@@ -164,6 +172,38 @@ export default async function Clientes() {
                     </form>
                     <p className="mt-1.5 text-[11px] text-faint">
                       Com número próprio: leads que chegam nele caem aqui e as respostas saem desse número (a marca do cliente, não a da Amplia). Vazio = usa o número da Amplia.
+                    </p>
+
+                    <div className="mt-3 text-[11px] font-semibold uppercase tracking-widest text-faint">
+                      WABA própria do cliente (opcional)
+                    </div>
+                    <form action={setOrgWaba} className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <input type="hidden" name="orgSlug" value={org.slug} />
+                      <input
+                        name="wabaId"
+                        defaultValue={org.waba_id ?? ""}
+                        placeholder="WABA ID do cliente"
+                        className="num w-44 rounded-xl border border-line bg-transparent px-3 py-1.5 text-xs placeholder:text-faint focus:border-signal/60 focus:outline-none"
+                      />
+                      <input
+                        name="datasetId"
+                        defaultValue={org.ctwa_dataset_id ?? ""}
+                        placeholder="dataset de mensagens (CAPI)"
+                        className="num w-52 rounded-xl border border-line bg-transparent px-3 py-1.5 text-xs placeholder:text-faint focus:border-signal/60 focus:outline-none"
+                      />
+                      <input
+                        name="token"
+                        type="password"
+                        placeholder={org.wa_access_token ? "token definido — vazio mantém" : "token do system user"}
+                        className="w-52 rounded-xl border border-line bg-transparent px-3 py-1.5 text-xs placeholder:text-faint focus:border-signal/60 focus:outline-none"
+                      />
+                      <button type="submit" className="btn btn-ghost btn-sm">Salvar WABA</button>
+                      {org.waba_id && org.wa_access_token && (
+                        <span className="text-[11px] text-emerald-400">● WABA própria ativa</span>
+                      )}
+                    </form>
+                    <p className="mt-1.5 text-[11px] text-faint">
+                      Só pra cliente que roda na PRÓPRIA WABA (business verificado dele). Envio, webhook e conversão passam a usar o token/dataset dele; vazio = infra da Amplia. No campo do token, digite &quot;limpar&quot; pra remover. Lembrete: inscrever o app na WABA do cliente (subscribed_apps) senão o webhook não recebe.
                     </p>
                   </div>
                 )}

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { advanceStage } from "@/lib/conversion";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendCloudText } from "@/lib/cloud-whatsapp";
+import { orgWaCreds } from "@/lib/org-creds";
 import { brLocalToIso } from "@/lib/format";
 import { getScope, getSessionUser } from "@/lib/auth";
 import { sendPushToOrgs } from "@/lib/push";
@@ -66,20 +67,13 @@ export async function replyToLead(formData: FormData): Promise<ReplyResult> {
   const { data: lead } = await sb.from("leads").select("phone, org_id").eq("id", leadId).maybeSingle();
   if (!lead?.phone) return { ok: false, error: "Lead sem telefone registrado." };
 
-  // multi-número: responde A PARTIR do número da org do lead (cada cliente tem o seu).
-  // Se a org não tiver número próprio, cai no número padrão da Amplia (env).
-  let fromPhoneId: string | null = null;
-  if (lead.org_id) {
-    const { data: org } = await sb
-      .from("organizations")
-      .select("wa_phone_number_id")
-      .eq("slug", lead.org_id)
-      .maybeSingle();
-    fromPhoneId = (org?.wa_phone_number_id as string | null) ?? null;
-  }
+  // multi-número: responde A PARTIR do número da org do lead (cada cliente tem o seu),
+  // com o token da WABA dona do número (org com WABA própria usa o token dela).
+  // Org sem credencial → número/token padrão da Amplia (env). Ver lib/org-creds.
+  const creds = await orgWaCreds(lead.org_id as string | null);
 
   try {
-    const res = await sendCloudText(lead.phone, text, fromPhoneId);
+    const res = await sendCloudText(lead.phone, text, creds.phoneId, creds.token);
     if (res.ok) {
       const wamid = (res.body as { messages?: { id?: string }[] })?.messages?.[0]?.id ?? null;
       await sb.from("messages").insert({
@@ -279,6 +273,24 @@ export async function setOrgNumber(formData: FormData) {
   const value = String(formData.get("phoneId") ?? "").replace(/[^0-9]/g, "") || null;
   if (!orgSlug) return;
   await supabaseAdmin().from("organizations").update({ wa_phone_number_id: value }).eq("slug", orgSlug);
+  revalidatePath("/painel/clientes");
+}
+
+// Define a WABA PRÓPRIA do cliente (waba_id + dataset + token do system user dele).
+// Tudo nulo = cliente roda na infra da Amplia (comportamento padrão).
+// Token: campo vazio MANTÉM o atual (não reexibimos segredo na UI); "limpar" apaga.
+export async function setOrgWaba(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const orgSlug = String(formData.get("orgSlug") ?? "").trim();
+  if (!orgSlug) return;
+  const wabaId = String(formData.get("wabaId") ?? "").replace(/[^0-9]/g, "") || null;
+  const datasetId = String(formData.get("datasetId") ?? "").replace(/[^0-9]/g, "") || null;
+  const tokenRaw = String(formData.get("token") ?? "").trim();
+  const patch: Record<string, string | null> = { waba_id: wabaId, ctwa_dataset_id: datasetId };
+  if (tokenRaw === "limpar") patch.wa_access_token = null;
+  else if (tokenRaw) patch.wa_access_token = tokenRaw;
+  await supabaseAdmin().from("organizations").update(patch).eq("slug", orgSlug);
   revalidatePath("/painel/clientes");
 }
 

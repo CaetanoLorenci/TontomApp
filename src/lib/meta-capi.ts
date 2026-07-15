@@ -20,6 +20,9 @@ export type CapiInput = {
   ctwaClid?: string | null; // anúncio nativo de WhatsApp → evento business_messaging
   value?: number | null;
   currency?: string;
+  // org com WABA PRÓPRIA (lib/org-creds): token/WABA/dataset dela substituem as envs
+  // da Amplia no canal CTWA. Omitido = comportamento atual (infra Amplia).
+  creds?: { token?: string | null; wabaId?: string | null; datasetId?: string | null };
 };
 
 export type CapiResult = { ok: boolean; status: number; body: unknown };
@@ -31,7 +34,7 @@ export async function sendCapiEvent(input: CapiInput): Promise<CapiResult> {
   // whatsapp_business_manage_events (o token do pixel NÃO tem acesso ao dataset).
   // site posta no pixel web → token do pixel.
   const token = isCtwa
-    ? (process.env.WHATSAPP_ACCESS_TOKEN ?? process.env.META_CAPI_TOKEN)
+    ? (input.creds?.token || process.env.WHATSAPP_ACCESS_TOKEN || process.env.META_CAPI_TOKEN)
     : process.env.META_CAPI_TOKEN;
   if (!token) {
     throw new Error("Faltando token CAPI (WHATSAPP_ACCESS_TOKEN/META_CAPI_TOKEN) no ambiente.");
@@ -41,7 +44,9 @@ export async function sendCapiEvent(input: CapiInput): Promise<CapiResult> {
   // ainda polui os dados do pixel. Por isso NÃO usamos fallback: enquanto
   // META_CTWA_DATASET_ID não existir, a gente PULA o envio e loga o motivo (fica visível
   // no capi_events quantas conversões CTWA ficaram sem mandar). Setar a env destrava — sem deploy.
-  const datasetId = isCtwa ? process.env.META_CTWA_DATASET_ID : process.env.META_PIXEL_ID;
+  const datasetId = isCtwa
+    ? (input.creds?.datasetId || process.env.META_CTWA_DATASET_ID)
+    : process.env.META_PIXEL_ID;
   if (!datasetId) {
     return {
       ok: false,
@@ -69,8 +74,8 @@ export async function sendCapiEvent(input: CapiInput): Promise<CapiResult> {
           // criado a partir da WABA). NÃO mandar page_id: provado em produção (22/jun) que
           // enviar page_id que não é exatamente a página vinculada ao dataset causa
           // subcode 2804065 (página/dataset incompatíveis). Sem page_id → events_received:1.
-          ...(isCtwa && process.env.WHATSAPP_WABA_ID
-            ? { whatsapp_business_account_id: process.env.WHATSAPP_WABA_ID }
+          ...(isCtwa && (input.creds?.wabaId || process.env.WHATSAPP_WABA_ID)
+            ? { whatsapp_business_account_id: input.creds?.wabaId || process.env.WHATSAPP_WABA_ID }
             : {}),
           ...(!isCtwa && input.fbc ? { fbc: input.fbc } : {}),
         },
