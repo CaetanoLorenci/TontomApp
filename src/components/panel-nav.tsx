@@ -9,7 +9,7 @@ import { BottomNav, type NavItem } from "./bottom-nav";
 //  · celular: header enxuto (logo + ações da tela + sino) e navegação na BARRA INFERIOR
 //    fixa (BottomNav — 4 destinos no polegar + "Mais"), padrão de app.
 //  · desktop (sm+): header com a linha de abas de sempre; barra inferior some.
-type Key = "painel" | "pipeline" | "agenda" | "anuncios" | "relatorios" | "criativos" | "projetos" | "central" | "clientes" | "acesso";
+type Key = "painel" | "pipeline" | "agenda" | "anuncios" | "relatorios" | "criativos" | "projetos" | "central" | "clientes" | "acesso" | "contas";
 
 type Item = { key: Key; href: string; label: string; Icon: ComponentType<{ size?: number; className?: string }> | null };
 
@@ -25,7 +25,8 @@ const BASE: Item[] = [
 ];
 
 const ADMIN: Item[] = [
-  { key: "clientes", href: "/painel/clientes", label: "Clientes", Icon: IconTarget },
+  { key: "contas", href: "/painel/contas", label: "Contas", Icon: IconTarget },
+  { key: "clientes", href: "/painel/clientes", label: "Clientes", Icon: null },
   { key: "acesso", href: "/painel/acesso", label: "Acesso", Icon: null },
 ];
 

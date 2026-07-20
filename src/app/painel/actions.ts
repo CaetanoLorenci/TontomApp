@@ -294,6 +294,40 @@ export async function setOrgWaba(formData: FormData) {
   revalidatePath("/painel/clientes");
 }
 
+// ── Hub Gestor: contas de anúncio gerenciadas (só Amplia) ──
+export async function addManagedAccount(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const actId = String(formData.get("actId") ?? "").replace(/[^0-9]/g, "");
+  const clientName = String(formData.get("clientName") ?? "").trim();
+  if (!actId || !clientName) return;
+  const budgetRaw = String(formData.get("budget") ?? "").replace(/\./g, "").replace(",", ".");
+  const targetRaw = String(formData.get("targetCpa") ?? "").replace(/\./g, "").replace(",", ".");
+  const budget = budgetRaw ? Number(budgetRaw) : null;
+  const target = targetRaw ? Number(targetRaw) : null;
+  await supabaseAdmin().from("managed_accounts").upsert(
+    {
+      act_id: actId,
+      client_name: clientName,
+      monthly_budget: Number.isFinite(budget as number) ? budget : null,
+      target_cpa: Number.isFinite(target as number) ? target : null,
+      active: true,
+    },
+    { onConflict: "act_id" },
+  );
+  revalidatePath("/painel/contas");
+}
+
+export async function removeManagedAccount(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  // desativa (não apaga) — preserva histórico/nota se a conta voltar
+  await supabaseAdmin().from("managed_accounts").update({ active: false }).eq("id", id);
+  revalidatePath("/painel/contas");
+}
+
 // ── Notificações push ───────────────────────────────────────
 type WebPushSub = { endpoint: string; keys: { p256dh: string; auth: string } };
 

@@ -47,7 +47,8 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [ghost, setGhost] = useState<Ghost | null>(null);
-  const [pendingSale, setPendingSale] = useState<string | null>(null);
+  // venda pendente: guarda também o estágio de ORIGEM pra poder cancelar/reverter
+  const [pendingSale, setPendingSale] = useState<{ id: string; from: string } | null>(null);
   const [saleValue, setSaleValue] = useState("");
   const [, startTransition] = useTransition();
 
@@ -165,8 +166,8 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
     if (!d) return;
     e.preventDefault();
     setGhost({ left: e.clientX - d.offX, top: e.clientY - d.offY, w: d.w, name: d.name });
-    const s = stageAt(e.clientX, e.clientY);
-    if (s) setOver(s);
+    // null quando está fora de qualquer coluna — limpa o destaque e NÃO guarda estágio velho
+    setOver(stageAt(e.clientX, e.clientY));
     const EDGE = 56;
     let dx = 0;
     let dy = 0;
@@ -193,7 +194,8 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
     stopBlockScroll();
     setDragId(null);
     setGhost(null);
-    const target = stageAt(e.clientX, e.clientY) ?? over;
+    // soltar FORA de qualquer coluna = cancelar (sem fallback pro último sobrevoado)
+    const target = stageAt(e.clientX, e.clientY);
     setOver(null);
     if (!d) return;
     if (target && target !== d.from) applyMove(d.id, target);
@@ -212,10 +214,11 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
   }
 
   function applyMove(id: string, stage: string) {
+    const from = cards.find((c) => c.id === id)?.stage ?? "novo";
     setCards((cs) => cs.map((c) => (c.id === id ? { ...c, stage } : c))); // otimista
     if (stage === "vendido") {
       setSaleValue("");
-      setPendingSale(id);
+      setPendingSale({ id, from });
     } else {
       startTransition(() => {
         moveLeadStage(id, stage);
@@ -231,6 +234,15 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
     startTransition(() => {
       moveLeadStage(id, "vendido", value);
     });
+  }
+
+  // desiste da venda: card VOLTA pro estágio de origem (nada persistido, nenhum CAPI)
+  function cancelSale() {
+    const p = pendingSale;
+    if (!p) return;
+    setPendingSale(null);
+    setSaleValue("");
+    setCards((cs) => cs.map((c) => (c.id === p.id ? { ...c, stage: p.from } : c)));
   }
 
   useEffect(
@@ -299,7 +311,7 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
 
                     {c.campaign && <div className="mt-1 truncate text-xs text-faint">{c.campaign}</div>}
 
-                    {pendingSale === c.id ? (
+                    {pendingSale?.id === c.id ? (
                       <div className="mt-2 flex items-center gap-1.5">
                         <input
                           autoFocus
@@ -307,6 +319,7 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
                           onChange={(e) => setSaleValue(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") confirmSale(c.id);
+                            if (e.key === "Escape") cancelSale();
                           }}
                           inputMode="decimal"
                           placeholder="valor R$"
@@ -318,6 +331,14 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
                           className="btn btn-primary btn-sm"
                         >
                           Confirmar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelSale}
+                          className="btn btn-ghost btn-sm"
+                          aria-label="cancelar venda"
+                        >
+                          ✕
                         </button>
                       </div>
                     ) : (
