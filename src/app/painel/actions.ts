@@ -328,6 +328,33 @@ export async function removeManagedAccount(formData: FormData) {
   revalidatePath("/painel/contas");
 }
 
+// Define a "próxima ação" de uma conta (mini-tarefa visível no semáforo).
+export async function setAccountAction(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const id = String(formData.get("id") ?? "");
+  const action = String(formData.get("action") ?? "").trim().slice(0, 120);
+  if (!id || !action) return;
+  await supabaseAdmin()
+    .from("managed_accounts")
+    .update({ next_action: action, next_action_at: new Date().toISOString() })
+    .eq("id", id);
+  revalidatePath("/painel/contas");
+}
+
+// Marca a próxima ação como feita (limpa).
+export async function clearAccountAction(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await supabaseAdmin()
+    .from("managed_accounts")
+    .update({ next_action: null, next_action_at: null })
+    .eq("id", id);
+  revalidatePath("/painel/contas");
+}
+
 // ── Notificações push ───────────────────────────────────────
 type WebPushSub = { endpoint: string; keys: { p256dh: string; auth: string } };
 

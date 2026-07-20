@@ -18,6 +18,8 @@ export type ManagedAccount = {
   target_cpa: number | null;
   notes: string | null;
   active: boolean;
+  next_action: string | null; // "próxima ação" pendente (mini-tarefa do semáforo)
+  next_action_at: string | null;
 };
 
 type Insights = { spend: number; results: number; resultLabel: string | null };
@@ -33,6 +35,7 @@ export type AccountHealth = {
   yesterday: Insights;
   d7: Insights;
   d30: Insights;
+  prev7: Insights; // a semana ANTERIOR aos últimos 7d (tendência ↑↓ sem abrir Gerenciador)
   level: "red" | "yellow" | "green";
   reasons: string[]; // interpretação legível ("por que essa cor")
 };
@@ -70,9 +73,20 @@ async function graphGet(path: string, token: string): Promise<Record<string, unk
   }
 }
 
+// semana anterior à janela dos últimos 7d: [hoje-14, hoje-8]
+function prev7Range(): string {
+  const day = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return d.toISOString().slice(0, 10);
+  };
+  return encodeURIComponent(JSON.stringify({ since: day(14), until: day(8) }));
+}
+
 async function insightsFor(actId: string, preset: string, token: string): Promise<Insights> {
+  const range = preset === "prev_7d" ? `time_range=${prev7Range()}` : `date_preset=${preset}`;
   const json = await graphGet(
-    `act_${actId}/insights?fields=spend,actions&date_preset=${preset}`,
+    `act_${actId}/insights?fields=spend,actions&${range}`,
     token,
   );
   const row = ((json?.data as Record<string, unknown>[] | undefined) ?? [])[0] as
@@ -134,14 +148,16 @@ export async function accountHealth(account: ManagedAccount): Promise<AccountHea
     yesterday: { spend: 0, results: 0, resultLabel: null },
     d7: { spend: 0, results: 0, resultLabel: null },
     d30: { spend: 0, results: 0, resultLabel: null },
+    prev7: { spend: 0, results: 0, resultLabel: null },
   };
   if (!token) return { ...base, ...judge(base) };
 
-  const [info, yesterday, d7, d30] = await Promise.all([
+  const [info, yesterday, d7, d30, prev7] = await Promise.all([
     graphGet(`act_${account.act_id}?fields=name,account_status,currency,funding_source_details`, token),
     insightsFor(account.act_id, "yesterday", token),
     insightsFor(account.act_id, "last_7d", token),
     insightsFor(account.act_id, "last_30d", token),
+    insightsFor(account.act_id, "prev_7d", token),
   ]);
 
   if (!info) {
@@ -161,6 +177,7 @@ export async function accountHealth(account: ManagedAccount): Promise<AccountHea
     yesterday,
     d7,
     d30,
+    prev7,
   };
   return { ...filled, ...judge(filled) };
 }

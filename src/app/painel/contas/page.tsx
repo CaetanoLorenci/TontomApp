@@ -3,8 +3,27 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { getScope } from "@/lib/auth";
 import { PanelNav } from "@/components/panel-nav";
 import { allAccountsHealth, type ManagedAccount } from "@/lib/gestor";
-import { addManagedAccount, removeManagedAccount } from "../actions";
+import { addManagedAccount, removeManagedAccount, setAccountAction, clearAccountAction } from "../actions";
 import { brl } from "@/lib/format";
+
+// tendência: variação % entre dois valores (null quando não dá pra comparar)
+function pct(cur: number, prev: number): number | null {
+  if (!(prev > 0)) return null;
+  return Math.round(((cur - prev) / prev) * 100);
+}
+
+// seta de custo: subir custo é RUIM (vermelho), cair é BOM (verde)
+function CostTrend({ cur, prev }: { cur: number | null; prev: number | null }) {
+  if (cur == null || prev == null) return null;
+  const p = pct(cur, prev);
+  if (p == null || Math.abs(p) < 5) return null; // <5% = ruído, não mostra
+  const up = p > 0;
+  return (
+    <span className={`num text-[11px] font-bold ${up ? "text-st-perd" : "text-st-vend"}`}>
+      {up ? "↑" : "↓"}{Math.abs(p)}%
+    </span>
+  );
+}
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +44,7 @@ export default async function Contas() {
   const sb = supabaseAdmin();
   const { data } = await sb
     .from("managed_accounts")
-    .select("id, act_id, client_name, monthly_budget, target_cpa, notes, active")
+    .select("id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at")
     .eq("active", true)
     .order("created_at", { ascending: true });
   const accounts = (data ?? []) as ManagedAccount[];
@@ -107,6 +126,7 @@ export default async function Contas() {
               const d7 = h.d7;
               const cpaY = y.results > 0 ? y.spend / y.results : null;
               const cpa7 = d7.results > 0 ? d7.spend / d7.results : null;
+              const cpaPrev7 = h.prev7.results > 0 ? h.prev7.spend / h.prev7.results : null;
               return (
                 <div key={h.account.id} className="card p-4" style={{ borderColor: `color-mix(in srgb, ${meta.color} 45%, var(--color-line))` }}>
                   <div className="flex flex-wrap items-center gap-2">
@@ -151,7 +171,7 @@ export default async function Contas() {
                         {d7.results > 0 && (
                           <>
                             {" "}· {d7.results} {d7.resultLabel}
-                            {cpa7 != null && <> · {brl.format(cpa7)}/res</>}
+                            {cpa7 != null && <> · {brl.format(cpa7)}/res <CostTrend cur={cpa7} prev={cpaPrev7} /></>}
                           </>
                         )}
                       </span>
@@ -168,6 +188,31 @@ export default async function Contas() {
                       </span>
                     </div>
                   )}
+
+                  {/* próxima ação: mini-tarefa da conta, sempre à vista */}
+                  <div className="mt-3 border-t border-line/60 pt-2.5">
+                    {h.account.next_action ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-signal-soft px-2.5 py-1 text-xs font-semibold text-signal">
+                          → {h.account.next_action}
+                        </span>
+                        <form action={clearAccountAction}>
+                          <input type="hidden" name="id" value={h.account.id} />
+                          <button type="submit" className="btn btn-ghost btn-sm">✓ feito</button>
+                        </form>
+                      </div>
+                    ) : (
+                      <form action={setAccountAction} className="flex items-center gap-1.5">
+                        <input type="hidden" name="id" value={h.account.id} />
+                        <input
+                          name="action"
+                          placeholder="+ próxima ação (ex.: trocar criativo qua)"
+                          className="min-w-0 flex-1 rounded-lg border border-line bg-transparent px-2.5 py-1.5 text-xs placeholder:text-faint focus:border-signal/60 focus:outline-none"
+                        />
+                        <button type="submit" className="btn btn-ghost btn-sm shrink-0">salvar</button>
+                      </form>
+                    )}
+                  </div>
                 </div>
               );
             })}

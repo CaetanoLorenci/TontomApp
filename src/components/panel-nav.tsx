@@ -61,9 +61,15 @@ export function PanelNav({
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/painel" className="flex shrink-0 items-center gap-2.5">
             <LogoMark size={26} />
-            <span className="font-head text-lg font-extrabold tracking-tight">
-              Amplia <span className="text-signal">Hub</span>
-            </span>
+            {GESTOR_MODE ? (
+              <span className="font-head text-lg font-extrabold tracking-tight">
+                Metrifica<span className="text-signal">dor</span>
+              </span>
+            ) : (
+              <span className="font-head text-lg font-extrabold tracking-tight">
+                Amplia <span className="text-signal">Hub</span>
+              </span>
+            )}
           </Link>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {right}
