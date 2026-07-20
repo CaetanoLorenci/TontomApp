@@ -4,6 +4,7 @@ import { LogoMark, IconChat, IconFunnel, IconCalendar, IconBroadcast, IconTarget
 import { PushToggle } from "./push-toggle";
 import { RequestFab } from "./request-fab";
 import { BottomNav, type NavItem } from "./bottom-nav";
+import { GESTOR_MODE, GESTOR_KEYS } from "@/lib/hub-mode";
 
 // Header compartilhado do painel — mobile-first:
 //  · celular: header enxuto (logo + ações da tela + sino) e navegação na BARRA INFERIOR
@@ -39,7 +40,9 @@ export function PanelNav({
   seesAll?: boolean;
   right?: ReactNode;
 }) {
-  const items = seesAll ? [...BASE, ...ADMIN] : BASE;
+  // modo gestor: navegação enxuta só com os módulos ativos (resto em stand-by via GESTOR_KEYS)
+  const all = seesAll ? [...BASE, ...ADMIN] : BASE;
+  const items = GESTOR_MODE ? all.filter((it) => (GESTOR_KEYS as readonly string[]).includes(it.key)) : all;
   const bottomItems: NavItem[] = items.map((it) => ({
     key: it.key,
     href: it.href,
@@ -91,8 +94,9 @@ export function PanelNav({
         </nav>
       </div>
     </header>
-    <BottomNav items={bottomItems} active={active} />
-    <RequestFab />
+    {/* barra inferior só faz sentido com destinos suficientes; FAB de pedidos é do modo CRM */}
+    {items.length > 2 && <BottomNav items={bottomItems} active={active} />}
+    {!GESTOR_MODE && <RequestFab />}
     </>
   );
 }

@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
+import { GESTOR_MODE } from "@/lib/hub-mode";
 import { updateLead } from "./actions";
 import {
   LogoMark,
@@ -190,9 +192,11 @@ function ActivityChart({ series }: { series: { label: string; count: number }[] 
 export default async function Painel({
   searchParams,
 }: {
-  searchParams: Promise<{ p?: string; q?: string; stage?: string }>;
+  searchParams: Promise<{ p?: string; q?: string; stage?: string; crm?: string }>;
 }) {
-  const { p, q, stage } = await searchParams;
+  const { p, q, stage, crm } = await searchParams;
+  // modo gestor: a casa é a dash de contas; o CRM fica em stand-by (acessível via ?crm=1)
+  if (GESTOR_MODE && crm !== "1") redirect("/painel/contas");
   const period = PERIODS[p ?? "30d"] ? (p ?? "30d") : "30d";
   const since = periodStart(PERIODS[period].days);
   const query = (q ?? "").trim();
