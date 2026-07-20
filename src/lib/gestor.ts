@@ -209,6 +209,56 @@ export async function campaignBreakdown(actId: string): Promise<CampaignPerf[]> 
     .sort((a, b) => b.spend - a.spend);
 }
 
+// ── Relatório formatado pro WhatsApp (copiar/compartilhar) ──
+// Texto pronto com *negrito*/_itálico_ do WhatsApp: 7d vs semana anterior,
+// 30d, top campanhas e a leitura interpretada. Economiza a hora do relatório.
+const fBRL = (n: number) => `R$ ${n.toFixed(2).replace(".", ",")}`;
+const varTxt = (cur: number, prev: number): string => {
+  if (!(prev > 0)) return "";
+  const p = Math.round(((cur - prev) / prev) * 100);
+  if (Math.abs(p) < 5) return " (estável)";
+  return ` (${p > 0 ? "+" : ""}${p}% vs semana anterior)`;
+};
+
+export function buildWhatsAppReport(h: AccountHealth, campaigns: CampaignPerf[]): string {
+  const a = h.account;
+  const cpa = (i: Insights) => (i.results > 0 ? i.spend / i.results : null);
+  const c7 = cpa(h.d7);
+  const cPrev = cpa(h.prev7);
+  const label = h.d7.resultLabel ?? h.d30.resultLabel ?? "resultados";
+
+  const lines: string[] = [];
+  lines.push(`*Relatório — ${a.client_name}*`);
+  lines.push(`_Últimos 7 dias_`);
+  lines.push("");
+  lines.push(`💰 Investido: *${fBRL(h.d7.spend)}*${varTxt(h.d7.spend, h.prev7.spend)}`);
+  lines.push(`🎯 ${label[0].toUpperCase() + label.slice(1)}: *${h.d7.results}*${varTxt(h.d7.results, h.prev7.results)}`);
+  if (c7 != null) {
+    const dir = cPrev != null && Math.abs(((c7 - cPrev) / cPrev) * 100) >= 5 ? (c7 < cPrev ? " ✅ melhorou" : " ⚠️ subiu") : "";
+    lines.push(`📊 Custo por resultado: *${fBRL(c7)}*${varTxt(c7, cPrev ?? 0)}${dir}`);
+  }
+  lines.push("");
+  lines.push(`_No mês (30d): ${fBRL(h.d30.spend)} investidos · ${h.d30.results} ${h.d30.resultLabel ?? "resultados"}_`);
+
+  const top = campaigns.slice(0, 3);
+  if (top.length > 0) {
+    lines.push("");
+    lines.push("*Campanhas (7d):*");
+    for (const c of top) {
+      const ccpa = c.results > 0 ? ` · ${fBRL(c.spend / c.results)}/resultado` : " · sem resultado";
+      lines.push(`• ${c.name}: ${fBRL(c.spend)} · ${c.results} ${c.resultLabel ?? ""}${ccpa}`);
+    }
+  }
+
+  lines.push("");
+  const leitura =
+    h.level === "green"
+      ? "Conta saudável, rodando dentro do esperado."
+      : h.reasons.join("; ") + ".";
+  lines.push(`*Leitura:* ${leitura}`);
+  return lines.join("\n");
+}
+
 const LEVEL_RANK = { red: 0, yellow: 1, green: 2 } as const;
 
 // Saúde de todas as contas ativas, em paralelo, ordenada por urgência.
