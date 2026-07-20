@@ -46,6 +46,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: "#000000",
   colorScheme: "dark",
+  // viewport-fit=cover: necessário pro env(safe-area-inset-bottom) valer no iPhone
+  // (PWA standalone com status bar translúcida) — a BottomNav depende disso.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

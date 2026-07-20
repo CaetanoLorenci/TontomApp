@@ -273,3 +273,12 @@ h3 {
     stroke-dasharray: none;
   }
 }
+
+/* ── barra de navegação inferior (mobile) ─────────────────────
+   Reserva o espaço no rodapé só nas telas que têm a BottomNav
+   (o :has evita empurrar login/landing, que não têm barra). */
+@media (max-width: 639px) {
+  body:has(.bottom-nav) {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+}

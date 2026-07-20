@@ -23,7 +23,8 @@ export function RequestFab() {
   if (pathname?.startsWith("/painel/lead/") || pathname === "/painel/central") return null;
 
   return (
-    <div className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-50 print:hidden">
+    // mobile: acima da BottomNav; desktop: canto de sempre
+    <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-50 print:hidden sm:bottom-[max(1.25rem,env(safe-area-inset-bottom))] sm:right-5">
       {open && (
         <div className="mb-3 w-[min(90vw,22rem)] rounded-2xl border border-line2 bg-pane p-4 shadow-2xl">
           <div className="flex items-center justify-between">
