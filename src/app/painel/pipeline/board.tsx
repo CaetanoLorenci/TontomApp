@@ -26,8 +26,21 @@ function parseBRL(s: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-type DragRef = { id: string; from: string; offX: number; offY: number; w: number; name: string; moved: boolean };
+type DragRef = { id: string; from: string; offX: number; offY: number; w: number; name: string };
 type Ghost = { left: number; top: number; w: number; name: string };
+// toque pendente: vira arrasto se SEGURAR (long-press); vira rolagem se mover rápido.
+type PendingRef = {
+  card: PipelineCard;
+  el: HTMLElement;
+  startX: number;
+  startY: number;
+  isTouch: boolean;
+  timer: ReturnType<typeof setTimeout> | null;
+};
+
+const HOLD_MS = 280; // toque: segurar pra ativar o arrasto (padrão Trello/Todoist)
+const SCROLL_TOLERANCE = 10; // toque: mover mais que isso antes do hold = rolagem
+const MOUSE_THRESHOLD = 4; // mouse: arrasta após 4px (clique limpo continua clique)
 
 export function Board({ initial }: { initial: PipelineCard[] }) {
   const [cards, setCards] = useState(initial);
@@ -40,7 +53,27 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const drag = useRef<DragRef | null>(null);
+  const pending = useRef<PendingRef | null>(null);
   const autoScroll = useRef<{ dx: number; dy: number; raf: number } | null>(null);
+  // durante o arrasto no toque, bloqueia a rolagem nativa (senão o iOS cancela o gesto)
+  const scrollBlocker = useRef<((e: TouchEvent) => void) | null>(null);
+
+  function startBlockScroll() {
+    if (scrollBlocker.current) return;
+    const h = (e: TouchEvent) => e.preventDefault();
+    document.addEventListener("touchmove", h, { passive: false });
+    scrollBlocker.current = h;
+  }
+  function stopBlockScroll() {
+    if (scrollBlocker.current) {
+      document.removeEventListener("touchmove", scrollBlocker.current);
+      scrollBlocker.current = null;
+    }
+  }
+  function cancelPending() {
+    if (pending.current?.timer) clearTimeout(pending.current.timer);
+    pending.current = null;
+  }
 
   // Descobre o estágio sob um ponto da tela (hit-test robusto, considera o scroll).
   function stageAt(x: number, y: number): string | null {
@@ -73,32 +106,64 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
     }
   }
 
-  function onPointerDown(e: React.PointerEvent, card: PipelineCard) {
-    if (pendingSale) return;
-    // deixa links/botões/inputs do card funcionarem (abrir lead, confirmar venda)
-    if ((e.target as HTMLElement).closest("a,button,input")) return;
-    const el = e.currentTarget as HTMLElement;
-    const r = el.getBoundingClientRect();
+  // Ativa o arrasto de verdade (depois do hold no toque / do threshold no mouse).
+  function activateDrag(x: number, y: number) {
+    const p = pending.current;
+    if (!p) return;
+    if (p.timer) clearTimeout(p.timer);
+    const r = p.el.getBoundingClientRect();
     drag.current = {
-      id: card.id,
-      from: card.stage,
-      offX: e.clientX - r.left,
-      offY: e.clientY - r.top,
+      id: p.card.id,
+      from: p.card.stage,
+      offX: Math.min(Math.max(x - r.left, 0), r.width),
+      offY: Math.min(Math.max(y - r.top, 0), r.height),
       w: r.width,
-      name: card.name ?? "Sem nome",
-      moved: false,
+      name: p.card.name ?? "Sem nome",
     };
-    el.setPointerCapture(e.pointerId);
-    setDragId(card.id);
-    setOver(card.stage);
+    if (p.isTouch) {
+      startBlockScroll();
+      navigator.vibrate?.(15); // feedback tátil onde houver suporte (Android)
+    }
+    pending.current = null;
+    setDragId(drag.current.id);
+    setOver(drag.current.from);
     setGhost({ left: r.left, top: r.top, w: r.width, name: drag.current.name });
   }
 
+  function onPointerDown(e: React.PointerEvent, card: PipelineCard) {
+    if (pendingSale || drag.current) return;
+    // deixa links/botões/inputs do card funcionarem (abrir lead, confirmar venda)
+    if ((e.target as HTMLElement).closest("a,button,input")) return;
+    const el = e.currentTarget as HTMLElement;
+    const isTouch = e.pointerType !== "mouse";
+    cancelPending();
+    const p: PendingRef = { card, el, startX: e.clientX, startY: e.clientY, isTouch, timer: null };
+    pending.current = p;
+    el.setPointerCapture(e.pointerId);
+    // toque: só vira arrasto se SEGURAR — rolar a página nunca move card de coluna.
+    if (isTouch) {
+      const x = e.clientX;
+      const y = e.clientY;
+      p.timer = setTimeout(() => {
+        if (pending.current === p) activateDrag(x, y);
+      }, HOLD_MS);
+    }
+  }
+
   function onPointerMove(e: React.PointerEvent) {
+    // fase pendente: decide entre rolagem (toque rápido) e arrasto (mouse passou do threshold)
+    const p = pending.current;
+    if (p && !drag.current) {
+      const dist = Math.hypot(e.clientX - p.startX, e.clientY - p.startY);
+      if (p.isTouch) {
+        if (dist > SCROLL_TOLERANCE) cancelPending(); // é rolagem — deixa o navegador rolar
+      } else if (dist > MOUSE_THRESHOLD) {
+        activateDrag(e.clientX, e.clientY);
+      }
+    }
     const d = drag.current;
     if (!d) return;
     e.preventDefault();
-    d.moved = true;
     setGhost({ left: e.clientX - d.offX, top: e.clientY - d.offY, w: d.w, name: d.name });
     const s = stageAt(e.clientX, e.clientY);
     if (s) setOver(s);
@@ -121,15 +186,29 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
   }
 
   function onPointerUp(e: React.PointerEvent) {
+    cancelPending(); // toque curto sem hold = tap, nunca move
     const d = drag.current;
     drag.current = null;
     stopAutoScroll();
+    stopBlockScroll();
     setDragId(null);
     setGhost(null);
     const target = stageAt(e.clientX, e.clientY) ?? over;
     setOver(null);
     if (!d) return;
-    if (d.moved && target && target !== d.from) applyMove(d.id, target);
+    if (target && target !== d.from) applyMove(d.id, target);
+  }
+
+  // cancelamento (o navegador tomou o gesto pra rolagem, ligação entrou, etc.):
+  // aborta TUDO sem nunca aplicar movimento — evita soltar o card em coluna errada.
+  function onPointerCancel() {
+    cancelPending();
+    drag.current = null;
+    stopAutoScroll();
+    stopBlockScroll();
+    setDragId(null);
+    setGhost(null);
+    setOver(null);
   }
 
   function applyMove(id: string, stage: string) {
@@ -154,7 +233,14 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
     });
   }
 
-  useEffect(() => () => stopAutoScroll(), []);
+  useEffect(
+    () => () => {
+      stopAutoScroll();
+      stopBlockScroll();
+      cancelPending();
+    },
+    [],
+  );
 
   return (
     <>
@@ -191,9 +277,10 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
                     onPointerDown={(e) => onPointerDown(e, c)}
                     onPointerMove={onPointerMove}
                     onPointerUp={onPointerUp}
-                    onPointerCancel={onPointerUp}
-                    style={{ touchAction: "none" }}
-                    className={`card cursor-grab touch-none select-none p-3 transition-opacity active:cursor-grabbing ${
+                    onPointerCancel={onPointerCancel}
+                    // pan-y: rolagem vertical nativa LIVRE — arrasto só após segurar (hold)
+                    style={{ touchAction: "pan-y" }}
+                    className={`card cursor-grab select-none p-3 transition-opacity active:cursor-grabbing ${
                       dragId === c.id ? "opacity-30" : ""
                     }`}
                   >
@@ -268,10 +355,10 @@ export function Board({ initial }: { initial: PipelineCard[] }) {
         })}
       </div>
 
-      {/* card flutuante que segue o dedo durante o arraste */}
+      {/* card flutuante "levantado" que segue o dedo durante o arraste */}
       {ghost && (
         <div
-          className="card pointer-events-none fixed z-50 rotate-2 p-3 text-sm font-semibold opacity-90 shadow-2xl"
+          className="card pointer-events-none fixed z-50 scale-105 rotate-2 !border-signal/50 p-3 text-sm font-semibold opacity-95 shadow-2xl"
           style={{ left: ghost.left, top: ghost.top, width: ghost.w }}
         >
           {ghost.name}
