@@ -62,8 +62,13 @@ export function PanelNav({
           <Link href="/painel" className="flex shrink-0 items-center gap-2.5">
             <LogoMark size={26} />
             {GESTOR_MODE ? (
-              <span className="font-head text-lg font-extrabold tracking-tight">
-                Metrifica<span className="text-signal">dor</span>
+              <span className="flex items-center gap-2">
+                <span className="font-head text-lg font-extrabold tracking-tight">
+                  Metrifica<span className="text-signal">dor</span>
+                </span>
+                <span className="rounded border border-line2 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.22em] text-mist">
+                  Optimize
+                </span>
               </span>
             ) : (
               <span className="font-head text-lg font-extrabold tracking-tight">

@@ -56,50 +56,10 @@ export default async function Contas() {
           Todas as contas gerenciadas numa tela — o que precisa de ação aparece primeiro, com o motivo.
         </p>
 
-        {/* cadastrar conta */}
-        <section className="card mt-5 p-5">
-          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-faint">Adicionar conta</h2>
-          <form action={addManagedAccount} className="mt-3 grid gap-2 sm:grid-cols-4">
-            <input
-              name="actId"
-              required
-              placeholder="act_123… ou ID"
-              className="num rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
-            />
-            <input
-              name="clientName"
-              required
-              placeholder="Nome do cliente"
-              className="rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
-            />
-            <input
-              name="budget"
-              placeholder="Verba/mês R$ (opcional)"
-              inputMode="decimal"
-              className="num rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
-            />
-            <div className="flex gap-2">
-              <input
-                name="targetCpa"
-                placeholder="Custo-alvo R$ (opcional)"
-                inputMode="decimal"
-                className="num min-w-0 flex-1 rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
-              />
-              <button type="submit" className="btn btn-primary shrink-0">
-                Adicionar
-              </button>
-            </div>
-          </form>
-          <p className="mt-2 text-[11px] text-faint">
-            Sem custo-alvo, o semáforo compara com a média da própria conta (30d). O token precisa ter acesso à conta
-            (BM da Optimize → env <code className="text-signal">META_GESTOR_TOKEN</code>; senão usa o da Amplia).
-          </p>
-        </section>
-
         {/* semáforo */}
         {health.length === 0 ? (
           <div className="card mt-4 border-dashed p-8 text-center text-sm text-faint">
-            Nenhuma conta cadastrada ainda — adiciona a primeira acima e o semáforo nasce aqui.
+            Nenhuma conta cadastrada ainda — adiciona a primeira logo abaixo e o semáforo nasce aqui.
           </div>
         ) : (
           <div className="mt-4 space-y-3">
@@ -171,6 +131,45 @@ export default async function Contas() {
             })}
           </div>
         )}
+
+        {/* cadastrar conta — no rodapé de propósito: a tela abre direto no semáforo */}
+        <section className="card mt-6 p-5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-faint">Adicionar conta</h2>
+          <form action={addManagedAccount} className="mt-3 grid gap-2 sm:grid-cols-4">
+            <input
+              name="actId"
+              required
+              placeholder="act_123… ou ID"
+              className="num rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+            />
+            <input
+              name="clientName"
+              required
+              placeholder="Nome do cliente"
+              className="rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+            />
+            <input
+              name="budget"
+              placeholder="Verba/mês R$ (opcional)"
+              inputMode="decimal"
+              className="num rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+            />
+            <div className="flex gap-2">
+              <input
+                name="targetCpa"
+                placeholder="Custo-alvo R$ (opcional)"
+                inputMode="decimal"
+                className="num min-w-0 flex-1 rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+              />
+              <button type="submit" className="btn btn-primary shrink-0">
+                Adicionar
+              </button>
+            </div>
+          </form>
+          <p className="mt-2 text-[11px] text-faint">
+            Sem custo-alvo, o semáforo compara com a média da própria conta (30d).
+          </p>
+        </section>
       </div>
     </main>
   );

@@ -4,6 +4,7 @@ import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { InstallPrompt } from "@/components/install-prompt";
 import { PullToRefresh } from "@/components/pull-to-refresh";
+import { GESTOR_MODE } from "@/lib/hub-mode";
 
 // Identidade Amplia: Montserrat (títulos) + Inter (corpo). Mono p/ números.
 const montserrat = Montserrat({
@@ -44,7 +45,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  // modo gestor = navy Optimize; modo CRM = preto Amplia
+  themeColor: GESTOR_MODE ? "#0a1730" : "#000000",
   colorScheme: "dark",
   // viewport-fit=cover: necessário pro env(safe-area-inset-bottom) valer no iPhone
   // (PWA standalone com status bar translúcida) — a BottomNav depende disso.
@@ -61,7 +63,7 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${montserrat.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className={`${GESTOR_MODE ? "theme-optimize " : ""}min-h-full flex flex-col`}>
         <ServiceWorkerRegister />
         <PullToRefresh />
         {children}

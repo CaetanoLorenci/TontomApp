@@ -298,3 +298,31 @@ h3 {
     padding-top: max(calc(env(safe-area-inset-top) + 0.25rem), 3.5rem);
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   TEMA OPTIMIZE — modo gestor (Metrificador)
+   Identidade do manual: azuis profundos em degradê (navy → azul
+   royal), branco, cinza-azulado. Substitui o laranja Amplia via
+   override das vars — os componentes não mudam.
+   ════════════════════════════════════════════════════════════ */
+body.theme-optimize {
+  --color-ink: #0a1730;
+  --color-pane: #10223e;
+  --color-pane2: #172c4d;
+  --color-line: #22395c;
+  --color-line2: #33507c;
+  --color-mist: #b6c3d8;
+  --color-faint: #6f81a0;
+  --color-signal: #2f86e0; /* azul royal do manual, clareado p/ contraste no escuro */
+  --color-signal-2: #1f66b5;
+  --color-signal-soft: #0d2a4d;
+  background: linear-gradient(135deg, #0d2148 0%, #0a1730 55%, #131c38 100%);
+  background-attachment: fixed;
+}
+body.theme-optimize .atmosphere {
+  background: radial-gradient(ellipse 70% 40% at 50% -10%, rgba(47, 134, 224, 0.12), transparent 60%);
+}
+/* botão primário: no azul, texto branco lê melhor que navy */
+body.theme-optimize .btn-primary {
+  color: #ffffff;
+}
