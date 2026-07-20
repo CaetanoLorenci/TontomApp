@@ -28,7 +28,7 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
   const sb = supabaseAdmin();
   const { data } = await sb
     .from("managed_accounts")
-    .select("id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at")
+    .select("id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at, objective, report_metrics")
     .eq("id", id)
     .maybeSingle();
   if (!data) notFound();
@@ -194,6 +194,44 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
                   className="num mt-1 w-full rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
                 />
               </label>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="text-xs text-mist">
+                Objetivo da conta (o que conta como resultado no semáforo e no relatório)
+                <select
+                  name="objective"
+                  defaultValue={account.objective ?? "auto"}
+                  style={{ colorScheme: "dark" }}
+                  className="mt-1 w-full rounded-xl border border-line bg-transparent px-3 py-2 text-sm focus:border-signal/60 focus:outline-none"
+                >
+                  <option value="auto">Auto (detecta: compra &gt; lead &gt; conversa)</option>
+                  <option value="compras">Compras</option>
+                  <option value="leads">Leads</option>
+                  <option value="conversas">Conversas iniciadas</option>
+                </select>
+              </label>
+              <fieldset className="text-xs text-mist">
+                <legend>Métricas extras no relatório</legend>
+                <div className="mt-1 grid grid-cols-2 gap-1.5 rounded-xl border border-line px-3 py-2">
+                  {[
+                    ["impressoes", "Impressões"],
+                    ["cliques", "Cliques"],
+                    ["ctr", "CTR"],
+                    ["cpm", "CPM"],
+                  ].map(([v, l]) => (
+                    <label key={v} className="flex items-center gap-1.5 text-sm">
+                      <input
+                        type="checkbox"
+                        name="metrics"
+                        value={v}
+                        defaultChecked={(account.report_metrics ?? []).includes(v)}
+                        className="accent-[var(--color-signal)]"
+                      />
+                      {l}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
             </div>
             <label className="block text-xs text-mist">
               Notas da conta (particularidades, combinados, aprendizados)

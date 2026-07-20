@@ -27,7 +27,7 @@ export default async function Contas() {
   const sb = supabaseAdmin();
   const { data } = await sb
     .from("managed_accounts")
-    .select("id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at")
+    .select("id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at, objective, report_metrics")
     .eq("active", true)
     .order("created_at", { ascending: true });
   const accounts = (data ?? []) as ManagedAccount[];

@@ -20,6 +20,8 @@ export type ManagedAccount = {
   active: boolean;
   next_action: string | null; // "próxima ação" pendente (mini-tarefa do semáforo)
   next_action_at: string | null;
+  objective: string; // 'auto' | 'compras' | 'leads' | 'conversas' — qual resultado a conta persegue
+  report_metrics: string[]; // extras no relatório: 'impressoes' | 'cliques' | 'ctr' | 'cpm'
 };
 
 type Insights = { spend: number; results: number; resultLabel: string | null };
@@ -48,14 +50,27 @@ const RESULT_GROUPS: { label: string; types: string[] }[] = [
   { label: "conversas", types: ["onsite_conversion.messaging_conversation_started_7d"] },
 ];
 
-function pickResults(actions: { action_type: string; value: string }[] | undefined): {
-  results: number;
-  resultLabel: string | null;
-} {
+function countGroup(
+  actions: { action_type: string; value: string }[] | undefined,
+  g: { label: string; types: string[] },
+): number {
+  return (actions ?? [])
+    .filter((a) => g.types.some((t) => a.action_type === t || a.action_type.includes(t)))
+    .reduce((s, a) => s + Number(a.value || 0), 0);
+}
+
+// objective 'auto' = pega o primeiro grupo com volume (compra > lead > conversa);
+// objective fixo = conta SÓ aquele grupo (mesmo que dê zero — honestidade no relatório).
+function pickResults(
+  actions: { action_type: string; value: string }[] | undefined,
+  objective: string = "auto",
+): { results: number; resultLabel: string | null } {
+  if (objective !== "auto") {
+    const g = RESULT_GROUPS.find((x) => x.label === objective);
+    if (g) return { results: countGroup(actions, g), resultLabel: g.label };
+  }
   for (const g of RESULT_GROUPS) {
-    const n = (actions ?? [])
-      .filter((a) => g.types.some((t) => a.action_type === t || a.action_type.includes(t)))
-      .reduce((s, a) => s + Number(a.value || 0), 0);
+    const n = countGroup(actions, g);
     if (n > 0) return { results: n, resultLabel: g.label };
   }
   return { results: 0, resultLabel: null };
@@ -83,7 +98,7 @@ function prev7Range(): string {
   return encodeURIComponent(JSON.stringify({ since: day(14), until: day(8) }));
 }
 
-async function insightsFor(actId: string, preset: string, token: string): Promise<Insights> {
+async function insightsFor(actId: string, preset: string, token: string, objective = "auto"): Promise<Insights> {
   const range = preset === "prev_7d" ? `time_range=${prev7Range()}` : `date_preset=${preset}`;
   const json = await graphGet(
     `act_${actId}/insights?fields=spend,actions&${range}`,
@@ -92,8 +107,55 @@ async function insightsFor(actId: string, preset: string, token: string): Promis
   const row = ((json?.data as Record<string, unknown>[] | undefined) ?? [])[0] as
     | { spend?: string; actions?: { action_type: string; value: string }[] }
     | undefined;
-  const { results, resultLabel } = pickResults(row?.actions);
+  const { results, resultLabel } = pickResults(row?.actions, objective);
   return { spend: Number(row?.spend || 0), results, resultLabel };
+}
+
+// ── Insights de RELATÓRIO: período livre + métricas extras (impressões/cliques/ctr/cpm) ──
+export type ReportInsights = Insights & {
+  impressions: number;
+  clicks: number;
+  ctr: number | null; // % (cliques/impressões, como o Meta reporta)
+  cpm: number | null;
+};
+
+export async function reportInsights(
+  actId: string,
+  since: string,
+  until: string,
+  objective = "auto",
+): Promise<ReportInsights> {
+  const token = adsToken();
+  const empty: ReportInsights = {
+    spend: 0, results: 0, resultLabel: null, impressions: 0, clicks: 0, ctr: null, cpm: null,
+  };
+  if (!token) return empty;
+  const range = encodeURIComponent(JSON.stringify({ since, until }));
+  const json = await graphGet(
+    `act_${actId}/insights?fields=spend,actions,impressions,clicks,ctr,cpm&time_range=${range}`,
+    token,
+  );
+  const row = ((json?.data as Record<string, unknown>[] | undefined) ?? [])[0] as
+    | {
+        spend?: string;
+        actions?: { action_type: string; value: string }[];
+        impressions?: string;
+        clicks?: string;
+        ctr?: string;
+        cpm?: string;
+      }
+    | undefined;
+  if (!row) return empty;
+  const { results, resultLabel } = pickResults(row.actions, objective);
+  return {
+    spend: Number(row.spend || 0),
+    results,
+    resultLabel,
+    impressions: Number(row.impressions || 0),
+    clicks: Number(row.clicks || 0),
+    ctr: row.ctr != null ? Number(row.ctr) : null,
+    cpm: row.cpm != null ? Number(row.cpm) : null,
+  };
 }
 
 const cpa = (i: Insights): number | null => (i.results > 0 ? i.spend / i.results : null);
@@ -154,10 +216,10 @@ export async function accountHealth(account: ManagedAccount): Promise<AccountHea
 
   const [info, yesterday, d7, d30, prev7] = await Promise.all([
     graphGet(`act_${account.act_id}?fields=name,account_status,currency,funding_source_details`, token),
-    insightsFor(account.act_id, "yesterday", token),
-    insightsFor(account.act_id, "last_7d", token),
-    insightsFor(account.act_id, "last_30d", token),
-    insightsFor(account.act_id, "prev_7d", token),
+    insightsFor(account.act_id, "yesterday", token, account.objective),
+    insightsFor(account.act_id, "last_7d", token, account.objective),
+    insightsFor(account.act_id, "last_30d", token, account.objective),
+    insightsFor(account.act_id, "prev_7d", token, account.objective),
   ]);
 
   if (!info) {
@@ -190,11 +252,17 @@ export type CampaignPerf = {
   resultLabel: string | null;
 };
 
-export async function campaignBreakdown(actId: string): Promise<CampaignPerf[]> {
+export async function campaignBreakdown(
+  actId: string,
+  opts?: { since: string; until: string; objective?: string },
+): Promise<CampaignPerf[]> {
   const token = adsToken();
   if (!token) return [];
+  const range = opts
+    ? `time_range=${encodeURIComponent(JSON.stringify({ since: opts.since, until: opts.until }))}`
+    : "date_preset=last_7d";
   const json = await graphGet(
-    `act_${actId}/insights?level=campaign&fields=campaign_name,spend,actions&date_preset=last_7d&limit=50`,
+    `act_${actId}/insights?level=campaign&fields=campaign_name,spend,actions&${range}&limit=50`,
     token,
   );
   const rows = (json?.data as
@@ -202,7 +270,7 @@ export async function campaignBreakdown(actId: string): Promise<CampaignPerf[]> 
     | undefined) ?? [];
   return rows
     .map((r) => {
-      const { results, resultLabel } = pickResults(r.actions);
+      const { results, resultLabel } = pickResults(r.actions, opts?.objective ?? "auto");
       return { name: r.campaign_name ?? "(sem nome)", spend: Number(r.spend || 0), results, resultLabel };
     })
     .filter((c) => c.spend > 0)
@@ -220,41 +288,64 @@ const varTxt = (cur: number, prev: number): string => {
   return ` (${p > 0 ? "+" : ""}${p}% vs semana anterior)`;
 };
 
-export function buildWhatsAppReport(h: AccountHealth, campaigns: CampaignPerf[]): string {
-  const a = h.account;
-  const cpa = (i: Insights) => (i.results > 0 ? i.spend / i.results : null);
-  const c7 = cpa(h.d7);
-  const cPrev = cpa(h.prev7);
-  const label = h.d7.resultLabel ?? h.d30.resultLabel ?? "resultados";
+const fINT = (n: number) => n.toLocaleString("pt-BR");
+
+export function buildWhatsAppReport(
+  account: ManagedAccount,
+  cur: ReportInsights,
+  prev: ReportInsights,
+  campaigns: CampaignPerf[],
+  periodLabel: string,
+): string {
+  const cpa = (i: ReportInsights) => (i.results > 0 ? i.spend / i.results : null);
+  const cCur = cpa(cur);
+  const cPrev = cpa(prev);
+  const label = cur.resultLabel ?? "resultados";
+  const extras = account.report_metrics ?? [];
 
   const lines: string[] = [];
-  lines.push(`*Relatório — ${a.client_name}*`);
-  lines.push(`_Últimos 7 dias_`);
+  lines.push(`*Relatório — ${account.client_name}*`);
+  lines.push(`_${periodLabel}_`);
   lines.push("");
-  lines.push(`💰 Investido: *${fBRL(h.d7.spend)}*${varTxt(h.d7.spend, h.prev7.spend)}`);
-  lines.push(`🎯 ${label[0].toUpperCase() + label.slice(1)}: *${h.d7.results}*${varTxt(h.d7.results, h.prev7.results)}`);
-  if (c7 != null) {
-    const dir = cPrev != null && Math.abs(((c7 - cPrev) / cPrev) * 100) >= 5 ? (c7 < cPrev ? " ✅ melhorou" : " ⚠️ subiu") : "";
-    lines.push(`📊 Custo por resultado: *${fBRL(c7)}*${varTxt(c7, cPrev ?? 0)}${dir}`);
+  lines.push(`💰 Investido: *${fBRL(cur.spend)}*${varTxt(cur.spend, prev.spend)}`);
+  lines.push(`🎯 ${label[0].toUpperCase() + label.slice(1)}: *${cur.results}*${varTxt(cur.results, prev.results)}`);
+  if (cCur != null) {
+    const dir =
+      cPrev != null && Math.abs(((cCur - cPrev) / cPrev) * 100) >= 5 ? (cCur < cPrev ? " ✅ melhorou" : " ⚠️ subiu") : "";
+    lines.push(`📊 Custo por resultado: *${fBRL(cCur)}*${varTxt(cCur, cPrev ?? 0)}${dir}`);
   }
-  lines.push("");
-  lines.push(`_No mês (30d): ${fBRL(h.d30.spend)} investidos · ${h.d30.results} ${h.d30.resultLabel ?? "resultados"}_`);
+
+  // métricas extras — só as escolhidas na calibragem da conta
+  const extraLines: string[] = [];
+  if (extras.includes("impressoes") && cur.impressions > 0) extraLines.push(`👀 Impressões: *${fINT(cur.impressions)}*`);
+  if (extras.includes("cliques") && cur.clicks > 0) extraLines.push(`🖱️ Cliques: *${fINT(cur.clicks)}*`);
+  if (extras.includes("ctr") && cur.ctr != null) extraLines.push(`🎯 CTR: *${cur.ctr.toFixed(2).replace(".", ",")}%*`);
+  if (extras.includes("cpm") && cur.cpm != null) extraLines.push(`📡 CPM: *${fBRL(cur.cpm)}*`);
+  if (extraLines.length) {
+    lines.push("");
+    lines.push(...extraLines);
+  }
 
   const top = campaigns.slice(0, 3);
   if (top.length > 0) {
     lines.push("");
-    lines.push("*Campanhas (7d):*");
+    lines.push("*Campanhas:*");
     for (const c of top) {
       const ccpa = c.results > 0 ? ` · ${fBRL(c.spend / c.results)}/resultado` : " · sem resultado";
       lines.push(`• ${c.name}: ${fBRL(c.spend)} · ${c.results} ${c.resultLabel ?? ""}${ccpa}`);
     }
   }
 
+  // leitura simples derivada do próprio período (sem depender do semáforo diário)
   lines.push("");
-  const leitura =
-    h.level === "green"
-      ? "Conta saudável, rodando dentro do esperado."
-      : h.reasons.join("; ") + ".";
+  let leitura: string;
+  if (cur.spend === 0) leitura = "Sem investimento no período.";
+  else if (cur.results === 0) leitura = `Investimento rodou sem ${label} registrados no período — em análise.`;
+  else if (cPrev != null && cCur != null && cCur < cPrev * 0.95)
+    leitura = `Custo por resultado melhorou vs período anterior — caminho certo.`;
+  else if (cPrev != null && cCur != null && cCur > cPrev * 1.2)
+    leitura = `Custo por resultado subiu vs período anterior — ajustes em andamento.`;
+  else leitura = "Conta rodando dentro do esperado no período.";
   lines.push(`*Leitura:* ${leitura}`);
   return lines.join("\n");
 }

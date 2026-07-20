@@ -353,12 +353,20 @@ export async function updateAccountSettings(formData: FormData) {
   const notes = String(formData.get("notes") ?? "").trim().slice(0, 2000) || null;
   const budget = budgetRaw ? Number(budgetRaw) : null;
   const target = targetRaw ? Number(targetRaw) : null;
+  const objectiveRaw = String(formData.get("objective") ?? "auto");
+  const objective = ["auto", "compras", "leads", "conversas"].includes(objectiveRaw) ? objectiveRaw : "auto";
+  const metrics = formData
+    .getAll("metrics")
+    .map(String)
+    .filter((m) => ["impressoes", "cliques", "ctr", "cpm"].includes(m));
   await supabaseAdmin()
     .from("managed_accounts")
     .update({
       monthly_budget: Number.isFinite(budget as number) ? budget : null,
       target_cpa: Number.isFinite(target as number) ? target : null,
       notes,
+      objective,
+      report_metrics: metrics,
     })
     .eq("id", id);
   revalidatePath("/painel/contas");
