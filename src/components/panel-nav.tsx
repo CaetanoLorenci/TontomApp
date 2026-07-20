@@ -48,12 +48,10 @@ export function PanelNav({
 
   return (
     <>
-    {/* pt = safe-area: no PWA (viewport-fit=cover) o header desliza pra baixo da
-        status bar do iPhone — sem isso o relógio do sistema cobre o logo. */}
-    <header
-      className="sticky top-0 z-20 border-b border-line bg-ink/80 backdrop-blur-md"
-      style={{ paddingTop: "env(safe-area-inset-top)" }}
-    >
+    {/* .panel-header (globals.css): no celular vira estático (rola com a página — a
+        navegação mora na barra inferior) e, no app instalado, desce abaixo da status
+        bar do iPhone com fallback fixo (não depende do env() do aparelho). */}
+    <header className="panel-header sticky top-0 z-20 border-b border-line bg-ink/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2.5 sm:px-6 sm:py-3">
         {/* linha única no mobile: logo + ações da tela + sino */}
         <div className="flex flex-wrap items-center gap-2">

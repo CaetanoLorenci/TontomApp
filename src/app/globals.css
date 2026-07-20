@@ -282,3 +282,19 @@ h3 {
     padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
   }
 }
+
+/* ── header do painel no celular ──────────────────────────────
+   1) vira estático: rola junto e libera a tela (nav já está na barra inferior);
+   2) no app instalado (standalone), começa ABAIXO da status bar do iPhone:
+      usa env(safe-area-inset-top) quando o aparelho informa, senão fallback
+      fixo de 3.5rem — garante que o relógio nunca cubra o logo. */
+@media (max-width: 639px) {
+  .panel-header {
+    position: static;
+  }
+}
+@media (max-width: 639px) and (display-mode: standalone) {
+  .panel-header {
+    padding-top: max(calc(env(safe-area-inset-top) + 0.25rem), 3.5rem);
+  }
+}
