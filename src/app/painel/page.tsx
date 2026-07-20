@@ -322,7 +322,7 @@ export default async function Painel({
         }
       />
 
-      <div className="relative z-10 mx-auto max-w-6xl px-6 py-8">
+      <div className="relative z-10 mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8">
         {/* ── alerta: leads aguardando resposta (anti-perda; notificação ainda falha) ── */}
         {needsReplyCount > 0 && (
           <a
@@ -342,7 +342,7 @@ export default async function Painel({
           {stats.map((s, i) => (
             <div
               key={s.label}
-              className={`card anim-up p-4 ${s.accent ? "!border-signal/30" : ""}`}
+              className={`card anim-up p-3.5 sm:p-4 ${s.accent ? "col-span-2 !border-signal/30 lg:col-span-1" : ""}`}
               style={{ animationDelay: `${i * 70}ms` }}
             >
               <div className="flex items-center justify-between">
@@ -351,7 +351,7 @@ export default async function Painel({
                 </span>
                 <s.icon size={16} className={s.accent ? "text-signal" : "text-faint"} />
               </div>
-              <div className={`num mt-2 truncate text-2xl font-bold ${s.accent ? "text-signal" : ""}`}>
+              <div className={`num mt-1.5 truncate text-xl font-bold sm:mt-2 sm:text-2xl ${s.accent ? "text-signal" : ""}`}>
                 {s.value}
               </div>
               {s.hint && <div className="mt-0.5 text-xs text-faint">{s.hint}</div>}

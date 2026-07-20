@@ -48,8 +48,13 @@ export function PanelNav({
 
   return (
     <>
-    <header className="sticky top-0 z-20 border-b border-line bg-ink/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:px-6">
+    {/* pt = safe-area: no PWA (viewport-fit=cover) o header desliza pra baixo da
+        status bar do iPhone — sem isso o relógio do sistema cobre o logo. */}
+    <header
+      className="sticky top-0 z-20 border-b border-line bg-ink/80 backdrop-blur-md"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
+      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2.5 sm:px-6 sm:py-3">
         {/* linha única no mobile: logo + ações da tela + sino */}
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/painel" className="flex shrink-0 items-center gap-2.5">
