@@ -182,6 +182,33 @@ export async function accountHealth(account: ManagedAccount): Promise<AccountHea
   return { ...filled, ...judge(filled) };
 }
 
+// Quebra por campanha (7d) — mostra QUAL campanha puxa o gasto/custo da conta.
+export type CampaignPerf = {
+  name: string;
+  spend: number;
+  results: number;
+  resultLabel: string | null;
+};
+
+export async function campaignBreakdown(actId: string): Promise<CampaignPerf[]> {
+  const token = adsToken();
+  if (!token) return [];
+  const json = await graphGet(
+    `act_${actId}/insights?level=campaign&fields=campaign_name,spend,actions&date_preset=last_7d&limit=50`,
+    token,
+  );
+  const rows = (json?.data as
+    | { campaign_name?: string; spend?: string; actions?: { action_type: string; value: string }[] }[]
+    | undefined) ?? [];
+  return rows
+    .map((r) => {
+      const { results, resultLabel } = pickResults(r.actions);
+      return { name: r.campaign_name ?? "(sem nome)", spend: Number(r.spend || 0), results, resultLabel };
+    })
+    .filter((c) => c.spend > 0)
+    .sort((a, b) => b.spend - a.spend);
+}
+
 const LEVEL_RANK = { red: 0, yellow: 1, green: 2 } as const;
 
 // Saúde de todas as contas ativas, em paralelo, ordenada por urgência.

@@ -342,6 +342,29 @@ export async function setAccountAction(formData: FormData) {
   revalidatePath("/painel/contas");
 }
 
+// Ajustes da conta na página de detalhe: verba, custo-alvo e notas.
+export async function updateAccountSettings(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const budgetRaw = String(formData.get("budget") ?? "").replace(/\./g, "").replace(",", ".");
+  const targetRaw = String(formData.get("targetCpa") ?? "").replace(/\./g, "").replace(",", ".");
+  const notes = String(formData.get("notes") ?? "").trim().slice(0, 2000) || null;
+  const budget = budgetRaw ? Number(budgetRaw) : null;
+  const target = targetRaw ? Number(targetRaw) : null;
+  await supabaseAdmin()
+    .from("managed_accounts")
+    .update({
+      monthly_budget: Number.isFinite(budget as number) ? budget : null,
+      target_cpa: Number.isFinite(target as number) ? target : null,
+      notes,
+    })
+    .eq("id", id);
+  revalidatePath("/painel/contas");
+  revalidatePath(`/painel/contas/${id}`);
+}
+
 // Marca a próxima ação como feita (limpa).
 export async function clearAccountAction(formData: FormData) {
   const { seesAll } = await getScope();

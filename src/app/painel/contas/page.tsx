@@ -2,28 +2,11 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getScope } from "@/lib/auth";
 import { PanelNav } from "@/components/panel-nav";
+import Link from "next/link";
 import { allAccountsHealth, type ManagedAccount } from "@/lib/gestor";
-import { addManagedAccount, removeManagedAccount, setAccountAction, clearAccountAction } from "../actions";
+import { addManagedAccount, setAccountAction, clearAccountAction } from "../actions";
 import { brl } from "@/lib/format";
-
-// tendência: variação % entre dois valores (null quando não dá pra comparar)
-function pct(cur: number, prev: number): number | null {
-  if (!(prev > 0)) return null;
-  return Math.round(((cur - prev) / prev) * 100);
-}
-
-// seta de custo: subir custo é RUIM (vermelho), cair é BOM (verde)
-function CostTrend({ cur, prev }: { cur: number | null; prev: number | null }) {
-  if (cur == null || prev == null) return null;
-  const p = pct(cur, prev);
-  if (p == null || Math.abs(p) < 5) return null; // <5% = ruído, não mostra
-  const up = p > 0;
-  return (
-    <span className={`num text-[11px] font-bold ${up ? "text-st-perd" : "text-st-vend"}`}>
-      {up ? "↑" : "↓"}{Math.abs(p)}%
-    </span>
-  );
-}
+import { CostTrend } from "./trend";
 
 export const dynamic = "force-dynamic";
 
@@ -129,68 +112,38 @@ export default async function Contas() {
               const cpaPrev7 = h.prev7.results > 0 ? h.prev7.spend / h.prev7.results : null;
               return (
                 <div key={h.account.id} className="card p-4" style={{ borderColor: `color-mix(in srgb, ${meta.color} 45%, var(--color-line))` }}>
-                  <div className="flex flex-wrap items-center gap-2">
+                  {/* linha 1: quem + estado + tendência — o clique abre o detalhe */}
+                  <Link href={`/painel/contas/${h.account.id}`} className="flex flex-wrap items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: meta.color, boxShadow: `0 0 8px ${meta.color}` }} />
-                    <span className="font-semibold">{h.account.client_name}</span>
+                    <span className="font-semibold text-snow">{h.account.client_name}</span>
                     <span
                       className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                       style={{ color: meta.color, background: `color-mix(in srgb, ${meta.color} 12%, transparent)` }}
                     >
                       {meta.label}
                     </span>
-                    <span className="num text-[11px] text-faint">
-                      act_{h.account.act_id}
-                      {h.accountName ? ` · ${h.accountName}` : ""}
-                    </span>
-                    <form action={removeManagedAccount} className="ml-auto">
-                      <input type="hidden" name="id" value={h.account.id} />
-                      <button type="submit" className="text-[11px] text-faint underline hover:text-st-perd">remover</button>
-                    </form>
-                  </div>
+                    <CostTrend cur={cpa7} prev={cpaPrev7} />
+                    <span className="ml-auto text-faint">→</span>
+                  </Link>
 
-                  {/* interpretação primeiro — o número explica, não lidera */}
-                  <ul className="mt-2 space-y-0.5 text-sm" style={{ color: h.level === "green" ? "var(--color-mist)" : meta.color }}>
-                    {h.reasons.map((r) => (
-                      <li key={r}>• {r}</li>
-                    ))}
-                  </ul>
-
+                  {/* só o motivo PRINCIPAL + ontem — detalhe completo fica na página da conta */}
+                  <p className="mt-1.5 text-sm" style={{ color: h.level === "green" ? "var(--color-mist)" : meta.color }}>
+                    {h.reasons[0]}
+                  </p>
                   {h.ok && (
-                    <div className="num mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-mist sm:grid-cols-4">
-                      <span>
-                        ontem <strong className="text-snow">{brl.format(y.spend)}</strong>
-                        {y.results > 0 && (
-                          <>
-                            {" "}· {y.results} {y.resultLabel}
-                            {cpaY != null && <> · {brl.format(cpaY)}/res</>}
-                          </>
-                        )}
-                      </span>
-                      <span>
-                        7d <strong className="text-snow">{brl.format(d7.spend)}</strong>
-                        {d7.results > 0 && (
-                          <>
-                            {" "}· {d7.results} {d7.resultLabel}
-                            {cpa7 != null && <> · {brl.format(cpa7)}/res <CostTrend cur={cpa7} prev={cpaPrev7} /></>}
-                          </>
-                        )}
-                      </span>
-                      <span>
-                        30d <strong className="text-snow">{brl.format(h.d30.spend)}</strong>
-                        {h.d30.results > 0 && <> · {h.d30.results} {h.d30.resultLabel}</>}
-                      </span>
-                      <span>
-                        {h.balanceValue != null ? (
-                          <>saldo <strong className="text-snow">{brl.format(h.balanceValue)}</strong></>
-                        ) : (
-                          <span className="text-faint">pós-pago / sem saldo exposto</span>
-                        )}
-                      </span>
-                    </div>
+                    <p className="num mt-1 text-xs text-mist">
+                      ontem <strong className="text-snow">{brl.format(y.spend)}</strong>
+                      {y.results > 0 && (
+                        <>
+                          {" "}· {y.results} {y.resultLabel}
+                          {cpaY != null && <> · {brl.format(cpaY)}/res</>}
+                        </>
+                      )}
+                    </p>
                   )}
 
                   {/* próxima ação: mini-tarefa da conta, sempre à vista */}
-                  <div className="mt-3 border-t border-line/60 pt-2.5">
+                  <div className="mt-2.5 border-t border-line/60 pt-2">
                     {h.account.next_action ? (
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-signal-soft px-2.5 py-1 text-xs font-semibold text-signal">
