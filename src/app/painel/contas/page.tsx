@@ -126,6 +126,20 @@ export default async function Contas() {
                     </p>
                   )}
 
+                  {/* meta combinada + verba + alvo — o contexto de cobrança sempre à vista */}
+                  {(h.account.client_goal || h.account.monthly_budget != null || h.account.target_note || h.account.target_cpa != null) && (
+                    <p className="mt-1 text-xs text-faint">
+                      {h.account.client_goal && <>🎯 {h.account.client_goal}</>}
+                      {h.account.monthly_budget != null && (
+                        <>
+                          {h.account.client_goal ? " · " : ""}verba {brl.format(h.account.monthly_budget)}/mês
+                        </>
+                      )}
+                      {h.account.target_cpa != null && <> · alvo {brl.format(h.account.target_cpa)}/res</>}
+                      {h.account.target_note && <> · alvo: {h.account.target_note}</>}
+                    </p>
+                  )}
+
                   {/* próxima ação: mini-tarefa da conta, sempre à vista */}
                   <div className="mt-2.5 border-t border-line/60 pt-2">
                     {h.account.next_action ? (
