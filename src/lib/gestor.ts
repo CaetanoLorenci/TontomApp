@@ -43,9 +43,15 @@ export type AccountHealth = {
 };
 
 // Extrai "resultados" priorizando o que importa: compra > lead > conversa iniciada.
-// Contas diferentes otimizam pra coisas diferentes — pega o primeiro tipo com volume.
+// ⚠️ O Meta repete a MESMA conversão em várias taxonomias (purchase, omni_purchase,
+// fb_pixel_purchase, onsite_web_purchase… todas com o mesmo valor). Por isso:
+// match EXATO e o PRIMEIRO tipo presente vence — somar tipos do grupo conta 3-8x
+// (bug real pego no Box Bistrô: 9 compras viravam 72).
 const RESULT_GROUPS: { label: string; types: string[] }[] = [
-  { label: "compras", types: ["purchase", "omni_purchase", "offsite_conversion.fb_pixel_purchase"] },
+  {
+    label: "compras",
+    types: ["omni_purchase", "purchase", "offsite_conversion.fb_pixel_purchase", "onsite_web_purchase", "web_in_store_purchase"],
+  },
   { label: "leads", types: ["lead", "onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead"] },
   { label: "conversas", types: ["onsite_conversion.messaging_conversation_started_7d"] },
 ];
@@ -54,9 +60,11 @@ function countGroup(
   actions: { action_type: string; value: string }[] | undefined,
   g: { label: string; types: string[] },
 ): number {
-  return (actions ?? [])
-    .filter((a) => g.types.some((t) => a.action_type === t || a.action_type.includes(t)))
-    .reduce((s, a) => s + Number(a.value || 0), 0);
+  for (const t of g.types) {
+    const row = (actions ?? []).find((a) => a.action_type === t);
+    if (row) return Number(row.value || 0);
+  }
+  return 0;
 }
 
 // objective 'auto' = pega o primeiro grupo com volume (compra > lead > conversa);
