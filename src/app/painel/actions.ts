@@ -349,10 +349,14 @@ export async function updateAccountSettings(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const budgetRaw = String(formData.get("budget") ?? "").replace(/\./g, "").replace(",", ".");
-  const targetRaw = String(formData.get("targetCpa") ?? "").replace(/\./g, "").replace(",", ".");
   const notes = String(formData.get("notes") ?? "").trim().slice(0, 2000) || null;
   const budget = budgetRaw ? Number(budgetRaw) : null;
-  const target = targetRaw ? Number(targetRaw) : null;
+  // custo-alvo aceita R$ OU anotação livre ("ROAS: +10x / ideal = 15x"):
+  // número → semáforo compara contra ele; texto → vira target_note e o semáforo usa a média 30d
+  const targetTyped = String(formData.get("targetCpa") ?? "").trim().slice(0, 200);
+  const targetNum = targetTyped ? Number(targetTyped.replace(/^R\$\s*/i, "").replace(/\./g, "").replace(",", ".")) : null;
+  const targetIsNumber = targetNum != null && Number.isFinite(targetNum);
+  const clientGoal = String(formData.get("clientGoal") ?? "").trim().slice(0, 300) || null;
   const objectiveRaw = String(formData.get("objective") ?? "auto");
   const objective = ["auto", "compras", "leads", "conversas"].includes(objectiveRaw) ? objectiveRaw : "auto";
   const metrics = formData
@@ -363,7 +367,9 @@ export async function updateAccountSettings(formData: FormData) {
     .from("managed_accounts")
     .update({
       monthly_budget: Number.isFinite(budget as number) ? budget : null,
-      target_cpa: Number.isFinite(target as number) ? target : null,
+      target_cpa: targetIsNumber ? targetNum : null,
+      target_note: !targetIsNumber && targetTyped ? targetTyped : null,
+      client_goal: clientGoal,
       notes,
       objective,
       report_metrics: metrics,

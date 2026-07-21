@@ -37,7 +37,7 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
   const sb = supabaseAdmin();
   const { data } = await sb
     .from("managed_accounts")
-    .select("id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at, objective, report_metrics")
+    .select("id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at, objective, report_metrics, client_goal, target_note")
     .eq("id", id)
     .maybeSingle();
   if (!data) notFound();
@@ -108,6 +108,22 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
           {h.accountName ? ` · ${h.accountName}` : ""} · status {h.status === 1 ? "ativa" : `⚠ ${h.status}`}
           {h.balanceValue != null && <> · saldo <strong className="text-snow">{brl.format(h.balanceValue)}</strong></>}
         </p>
+
+        {/* meta combinada com o cliente + alvo em texto — sempre à vista na hora de decidir */}
+        {(account.client_goal || account.target_note) && (
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-mist">
+            {account.client_goal && (
+              <span>
+                🎯 <strong className="text-snow">Meta:</strong> {account.client_goal}
+              </span>
+            )}
+            {account.target_note && (
+              <span>
+                📌 <strong className="text-snow">Alvo:</strong> {account.target_note}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* por que essa cor */}
         <ul className="mt-3 space-y-1 text-sm" style={{ color: h.level === "green" ? "var(--color-mist)" : meta.color }}>
@@ -329,16 +345,27 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
                 />
               </label>
               <label className="text-xs text-mist">
-                Custo-alvo por resultado (R$)
+                Custo-alvo por resultado (R$ ou anotação)
                 <input
                   name="targetCpa"
-                  defaultValue={account.target_cpa ?? ""}
-                  inputMode="decimal"
-                  placeholder="vazio = média da própria conta"
+                  defaultValue={account.target_note ?? account.target_cpa ?? ""}
+                  placeholder={'ex.: 15 — ou "ROAS: +10x / ideal = 15x"'}
                   className="num mt-1 w-full rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
                 />
+                <span className="mt-0.5 block text-[10px] text-faint">
+                  número = o semáforo compara contra ele · texto = fica de observação e o semáforo usa a média 30d
+                </span>
               </label>
             </div>
+            <label className="block text-xs text-mist">
+              Meta do cliente (o combinado, texto livre)
+              <input
+                name="clientGoal"
+                defaultValue={account.client_goal ?? ""}
+                placeholder="ex.: 30 conversas/mês gastando até R$ 1.500"
+                className="mt-1 w-full rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+              />
+            </label>
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="text-xs text-mist">
                 Objetivo da conta (o que conta como resultado no semáforo e no relatório)

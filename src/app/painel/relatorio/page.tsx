@@ -82,7 +82,7 @@ export default async function Relatorio({
   const { data } = await sb
     .from("managed_accounts")
     .select(
-      "id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at, objective, report_metrics",
+      "id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at, objective, report_metrics, client_goal, target_note",
     )
     .eq("active", true)
     .order("client_name", { ascending: true });

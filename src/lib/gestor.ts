@@ -22,6 +22,8 @@ export type ManagedAccount = {
   next_action_at: string | null;
   objective: string; // 'auto' | 'compras' | 'leads' | 'conversas' — qual resultado a conta persegue
   report_metrics: string[]; // extras no relatório: 'impressoes' | 'cliques' | 'ctr' | 'cpm'
+  client_goal: string | null; // meta combinada com o cliente, texto livre
+  target_note: string | null; // custo-alvo em texto (ex.: "ROAS: +10x / ideal = 15x") quando não é um R$ numérico
 };
 
 type Insights = { spend: number; results: number; resultLabel: string | null };
