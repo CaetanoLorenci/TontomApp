@@ -373,17 +373,42 @@ export async function updateAccountSettings(formData: FormData) {
   revalidatePath(`/painel/contas/${id}`);
 }
 
-// Marca a próxima ação como feita (limpa).
+// Marca a próxima ação como feita (limpa) — e vira entrada da timeline de graça:
+// concluir a mini-tarefa JÁ É o registro "o que fiz e quando" que a F2 pede.
 export async function clearAccountAction(formData: FormData) {
   const { seesAll } = await getScope();
   if (!seesAll) return;
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  await supabaseAdmin()
-    .from("managed_accounts")
-    .update({ next_action: null, next_action_at: null })
-    .eq("id", id);
+  const sb = supabaseAdmin();
+  const { data } = await sb.from("managed_accounts").select("next_action").eq("id", id).maybeSingle();
+  if (data?.next_action) {
+    await sb.from("account_events").insert({ account_id: id, kind: "acao_feita", text: data.next_action });
+  }
+  await sb.from("managed_accounts").update({ next_action: null, next_action_at: null }).eq("id", id);
   revalidatePath("/painel/contas");
+  revalidatePath(`/painel/contas/${id}`);
+}
+
+// ── Timeline de decisões (F2): registro manual do que foi testado/decidido ──
+export async function addAccountEvent(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const id = String(formData.get("id") ?? "");
+  const text = String(formData.get("text") ?? "").trim().slice(0, 300);
+  if (!id || !text) return;
+  await supabaseAdmin().from("account_events").insert({ account_id: id, kind: "decisao", text });
+  revalidatePath(`/painel/contas/${id}`);
+}
+
+export async function removeAccountEvent(formData: FormData) {
+  const { seesAll } = await getScope();
+  if (!seesAll) return;
+  const eventId = String(formData.get("eventId") ?? "");
+  const accountId = String(formData.get("accountId") ?? "");
+  if (!eventId) return;
+  await supabaseAdmin().from("account_events").delete().eq("id", eventId);
+  if (accountId) revalidatePath(`/painel/contas/${accountId}`);
 }
 
 // ── Notificações push ───────────────────────────────────────

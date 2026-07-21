@@ -3,8 +3,15 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getScope } from "@/lib/auth";
 import { PanelNav } from "@/components/panel-nav";
-import { accountHealth, campaignBreakdown, dailySeries, type ManagedAccount } from "@/lib/gestor";
-import { removeManagedAccount, setAccountAction, clearAccountAction, updateAccountSettings } from "../../actions";
+import { accountHealth, campaignBreakdown, dailySeries, accountActivities, type ManagedAccount } from "@/lib/gestor";
+import {
+  removeManagedAccount,
+  setAccountAction,
+  clearAccountAction,
+  updateAccountSettings,
+  addAccountEvent,
+  removeAccountEvent,
+} from "../../actions";
 import { brl } from "@/lib/format";
 import { CostTrend } from "../trend";
 
@@ -36,11 +43,26 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
   if (!data) notFound();
   const account = data as ManagedAccount;
 
-  const [h, campaigns, daily] = await Promise.all([
+  const [h, campaigns, daily, activities, eventsRes] = await Promise.all([
     accountHealth(account),
     campaignBreakdown(account.act_id),
     dailySeries(account.act_id, account.objective),
+    accountActivities(account.act_id),
+    sb.from("account_events").select("id, at, kind, text").eq("account_id", id).order("at", { ascending: false }).limit(30),
   ]);
+
+  // timeline única: decisões do gestor + mudanças registradas pelo Meta, mais recente primeiro
+  type TimelineItem =
+    | { src: "gestor"; id: string; at: string; kind: string; text: string }
+    | { src: "meta"; at: string; what: string; who: string | null; object: string | null };
+  const timeline: TimelineItem[] = [
+    ...((eventsRes.data ?? []) as { id: string; at: string; kind: string; text: string }[]).map(
+      (e) => ({ src: "gestor", ...e }) as TimelineItem,
+    ),
+    ...activities.map((a) => ({ src: "meta", ...a }) as TimelineItem),
+  ]
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .slice(0, 25);
   const meta = LEVEL_META[h.level];
 
   const cpa = (spend: number, results: number) => (results > 0 ? spend / results : null);
@@ -221,6 +243,73 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
               <button type="submit" className="btn btn-primary shrink-0">salvar</button>
             </form>
           )}
+        </section>
+
+        {/* timeline (F2): memória externa da conta — decisões do gestor + mudanças do Meta */}
+        <section className="card mt-4 p-5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-faint">
+            Timeline — o que foi feito nessa conta
+          </h2>
+          <form action={addAccountEvent} className="mt-3 flex items-center gap-2">
+            <input type="hidden" name="id" value={account.id} />
+            <input
+              name="text"
+              placeholder="registrar decisão (ex.: subi 2 criativos novos, teste de público frio)"
+              className="min-w-0 flex-1 rounded-xl border border-line bg-transparent px-3.5 py-2 text-sm placeholder:text-faint focus:border-signal/60 focus:outline-none"
+            />
+            <button type="submit" className="btn btn-ghost shrink-0">registrar</button>
+          </form>
+          {timeline.length === 0 ? (
+            <p className="mt-3 text-sm text-faint">
+              Nada registrado ainda — decisões suas e mudanças feitas na conta (via Meta) aparecem aqui.
+            </p>
+          ) : (
+            <ul className="mt-4 space-y-2.5">
+              {timeline.map((t, i) => {
+                // fuso explícito: servidor da Vercel roda em UTC
+                const when = new Date(t.at)
+                  .toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+                  .replace(",", "");
+                return (
+                  <li key={t.src === "gestor" ? t.id : `m${i}`} className="flex items-start gap-2.5 text-sm">
+                    <span className="num mt-0.5 shrink-0 text-[10px] text-faint">{when}</span>
+                    {t.src === "gestor" ? (
+                      <>
+                        <span
+                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${t.kind === "acao_feita" ? "bg-st-vend/15 text-st-vend" : "bg-signal-soft text-signal"}`}
+                        >
+                          {t.kind === "acao_feita" ? "✓ feito" : "decisão"}
+                        </span>
+                        <span className="min-w-0 flex-1 text-mist">{t.text}</span>
+                        <form action={removeAccountEvent} className="shrink-0">
+                          <input type="hidden" name="eventId" value={t.id} />
+                          <input type="hidden" name="accountId" value={account.id} />
+                          <button type="submit" className="text-[10px] text-faint hover:text-st-perd" title="apagar registro">
+                            ×
+                          </button>
+                        </form>
+                      </>
+                    ) : (
+                      <>
+                        <span className="shrink-0 rounded-full bg-pane2 px-1.5 py-0.5 text-[9px] font-bold uppercase text-faint">
+                          meta
+                        </span>
+                        <span className="min-w-0 flex-1 text-mist">
+                          {t.what}
+                          {t.object ? <span className="text-faint"> · {t.object}</span> : null}
+                          {t.who && t.who !== "Meta" ? <span className="text-faint"> — {t.who}</span> : null}
+                        </span>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <p className="mt-3 text-[11px] text-faint">
+            “Meta” = histórico oficial de alterações da conta (últimos 30 dias, sem cobranças). Concluir uma próxima
+            ação (✓ feito) também entra aqui automaticamente.
+          </p>
         </section>
 
         {/* calibragem + notas */}

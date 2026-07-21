@@ -287,6 +287,34 @@ export async function dailySeries(actId: string, objective = "auto", days = 14):
   return out;
 }
 
+// ── Histórico nativo do Meta (/activities): quem mudou o quê na conta ──
+// Edge read-only da Graph API — funciona com ads_read. É a metade automática da
+// timeline (a manual são as decisões registradas em account_events).
+export type MetaActivity = { at: string; what: string; who: string | null; object: string | null };
+
+export async function accountActivities(actId: string, days = 30, limit = 25): Promise<MetaActivity[]> {
+  const token = adsToken();
+  if (!token) return [];
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const json = await graphGet(
+    `act_${actId}/activities?fields=event_time,translated_event_type,actor_name,object_name&since=${since.toISOString().slice(0, 10)}&limit=${limit}`,
+    token,
+  );
+  const rows = (json?.data as
+    | { event_time?: string; translated_event_type?: string; actor_name?: string; object_name?: string }[]
+    | undefined) ?? [];
+  return rows
+    .filter((r) => r.event_time && r.translated_event_type)
+    .filter((r) => !/^(conta cobrada|account billed)/i.test(r.translated_event_type!)) // cobrança diária = ruído
+    .map((r) => ({
+      at: r.event_time!,
+      what: r.translated_event_type!,
+      who: r.actor_name ?? null,
+      object: r.object_name ?? null,
+    }));
+}
+
 // Quebra por campanha (7d) — mostra QUAL campanha puxa o gasto/custo da conta.
 export type CampaignPerf = {
   name: string;
