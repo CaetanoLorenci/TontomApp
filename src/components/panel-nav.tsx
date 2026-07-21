@@ -61,20 +61,28 @@ export function PanelNav({
         {/* linha única no mobile: logo + ações da tela + sino */}
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/painel" className="flex shrink-0 items-center gap-2.5">
-            <LogoMark size={26} />
             {GESTOR_MODE ? (
-              <span className="flex items-center gap-2">
-                <span className="font-head text-lg font-extrabold tracking-tight">
-                  Metrifica<span className="text-signal">dor</span>
+              /* logomarca OPTIMIZE do manual: caixa alta espaçada, "E" de três barras */
+              <span className="flex items-baseline gap-2.5">
+                <span className="flex items-center font-head text-lg font-extrabold uppercase tracking-[0.2em]">
+                  OPTIMIZ
+                  <svg width="13" height="14" viewBox="0 0 13 14" aria-hidden="true" className="ml-[2px]">
+                    <rect x="0" y="1" width="13" height="3" fill="currentColor" />
+                    <rect x="0" y="5.5" width="13" height="3" fill="currentColor" />
+                    <rect x="0" y="10" width="13" height="3" fill="currentColor" />
+                  </svg>
                 </span>
-                <span className="rounded border border-line2 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.22em] text-mist">
-                  Optimize
+                <span className="hidden text-[9px] font-semibold uppercase tracking-[0.28em] text-faint sm:inline">
+                  Metrificador
                 </span>
               </span>
             ) : (
-              <span className="font-head text-lg font-extrabold tracking-tight">
-                Amplia <span className="text-signal">Hub</span>
-              </span>
+              <>
+                <LogoMark size={26} />
+                <span className="font-head text-lg font-extrabold tracking-tight">
+                  Amplia <span className="text-signal">Hub</span>
+                </span>
+              </>
             )}
           </Link>
           <div className="ml-auto flex flex-wrap items-center gap-2">
