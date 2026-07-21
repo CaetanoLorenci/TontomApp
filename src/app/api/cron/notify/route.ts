@@ -2,13 +2,17 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendPushToOrgs } from "@/lib/push";
 import { getAccountFinance } from "@/lib/meta-ads";
+import { allAccountsHealth, type ManagedAccount } from "@/lib/gestor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // semáforo consulta a Graph API conta a conta
 
-// Resumo diário de notificações (Vercel Cron). Junta 3 gatilhos num push só por org:
-//  (1) compromissos de HOJE, (2) leads esfriando (aguardando resposta há horas),
-//  (3) saldo baixo da conta de anúncios (só Amplia).
+// Resumo diário de notificações (Vercel Cron, 11:00 UTC = 08:00 BRT).
+//  (A) SEMÁFORO DA MANHÃ (modo gestor): roda o judge de todas as contas gerenciadas
+//      e empurra o resultado — substitui abrir o app pra checar conta a conta.
+//  (B) digest do CRM (stand-by, segue vivo): compromissos de hoje, leads esfriando,
+//      saldo baixo da conta de anúncios (só Amplia).
 // ⚠️ No plano Hobby da Vercel o cron roda 1x/dia — por isso é um digest, não lembrete em tempo real.
 
 const COOLING_HOURS = 3; // lead aguardando resposta há mais que isso = "esfriando"
@@ -22,6 +26,40 @@ export async function GET(req: NextRequest) {
 
   const sb = supabaseAdmin();
   const now = new Date();
+
+  // ── (A) Semáforo da manhã — contas gerenciadas (push pro gestor = org amplia) ──
+  let semaforo: { red: number; yellow: number; green: number } | null = null;
+  let pushes = 0;
+  const { data: accts } = await sb
+    .from("managed_accounts")
+    .select(
+      "id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at, objective, report_metrics",
+    )
+    .eq("active", true);
+  const accounts = (accts ?? []) as ManagedAccount[];
+  if (accounts.length > 0) {
+    const health = await allAccountsHealth(accounts); // já vem ordenado por urgência
+    const counts = { red: 0, yellow: 0, green: 0 };
+    for (const h of health) counts[h.level]++;
+    semaforo = counts;
+
+    const attention = health.filter((h) => h.level !== "green");
+    const lines = attention
+      .slice(0, 4)
+      .map((h) => `${h.level === "red" ? "🔴" : "🟡"} ${h.account.client_name} — ${h.reasons[0]}`);
+    if (attention.length > 4) lines.push(`…e mais ${attention.length - 4}`);
+    if (attention.length === 0) lines.push(`Todas as ${health.length} contas rodando dentro do esperado ✅`);
+    const pendentes = accounts.filter((a) => a.next_action).length;
+    if (pendentes > 0)
+      lines.push(pendentes > 1 ? `📌 ${pendentes} próximas ações anotadas` : "📌 1 próxima ação anotada");
+
+    pushes += await sendPushToOrgs(["amplia"], {
+      title: `🚦 Semáforo: ${counts.red} agir · ${counts.yellow} de olho · ${counts.green} ok`,
+      body: lines.join("\n"),
+      url: "/painel/contas",
+      tag: "semaforo",
+    });
+  }
 
   // Janela do dia em Brasília (UTC-3): 00:00 BR = 03:00 UTC.
   const br = new Date(now.getTime() - 3 * 3600 * 1000);
@@ -54,8 +92,6 @@ export async function GET(req: NextRequest) {
   };
   for (const r of agendas ?? []) bump((r as { org_id: string }).org_id ?? "amplia", "agenda");
   for (const r of cooling ?? []) bump((r as { org_id: string }).org_id ?? "amplia", "cooling");
-
-  let pushes = 0;
 
   // push por CLIENTE (org != amplia) — só os dados da org dele
   for (const [org, c] of byOrg) {
@@ -94,6 +130,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
+    semaforo,
     agenda: totAgenda,
     cooling: totCooling,
     saldo,
