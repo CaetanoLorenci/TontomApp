@@ -252,6 +252,41 @@ export async function accountHealth(account: ManagedAccount): Promise<AccountHea
   return { ...filled, ...judge(filled) };
 }
 
+// ── Série diária (sparkline do detalhe): gasto+resultados por dia ──
+// time_increment=1 devolve uma linha por dia; dias sem entrega não vêm → preencher com zero,
+// senão a curva "esconde" exatamente o buraco que interessa ver.
+export type DailyPoint = { date: string; spend: number; results: number };
+
+export async function dailySeries(actId: string, objective = "auto", days = 14): Promise<DailyPoint[]> {
+  const token = adsToken();
+  if (!token) return [];
+  const iso = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return d.toISOString().slice(0, 10);
+  };
+  const range = encodeURIComponent(JSON.stringify({ since: iso(days), until: iso(1) }));
+  const json = await graphGet(
+    `act_${actId}/insights?fields=spend,actions&time_range=${range}&time_increment=1&limit=${days + 2}`,
+    token,
+  );
+  const rows = (json?.data as
+    | { date_start?: string; spend?: string; actions?: { action_type: string; value: string }[] }[]
+    | undefined) ?? [];
+  const byDate = new Map<string, DailyPoint>();
+  for (const r of rows) {
+    if (!r.date_start) continue;
+    const { results } = pickResults(r.actions, objective);
+    byDate.set(r.date_start, { date: r.date_start, spend: Number(r.spend || 0), results });
+  }
+  const out: DailyPoint[] = [];
+  for (let n = days; n >= 1; n--) {
+    const d = iso(n);
+    out.push(byDate.get(d) ?? { date: d, spend: 0, results: 0 });
+  }
+  return out;
+}
+
 // Quebra por campanha (7d) — mostra QUAL campanha puxa o gasto/custo da conta.
 export type CampaignPerf = {
   name: string;

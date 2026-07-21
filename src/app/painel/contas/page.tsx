@@ -56,6 +56,30 @@ export default async function Contas() {
           Todas as contas gerenciadas numa tela — o que precisa de ação aparece primeiro, com o motivo.
         </p>
 
+        {/* pulso do portfólio: quanto tá girando no total (a 1ª pergunta da manhã) */}
+        {health.length > 0 && (
+          <div className="card mt-4 flex flex-wrap items-baseline gap-x-6 gap-y-1 px-4 py-3">
+            {(() => {
+              {/* só gasto: somar "resultados" de objetivos diferentes (compra+lead+conversa) enganaria */}
+              const tot = health.reduce(
+                (s, h) => ({ y: s.y + h.yesterday.spend, d7: s.d7 + h.d7.spend }),
+                { y: 0, d7: 0 },
+              );
+              return (
+                <>
+                  <span className="num text-xs text-mist">
+                    investido ontem <strong className="text-base text-snow">{brl.format(tot.y)}</strong>
+                  </span>
+                  <span className="num text-xs text-mist">
+                    7 dias <strong className="text-base text-snow">{brl.format(tot.d7)}</strong>
+                  </span>
+                  <span className="num ml-auto text-[11px] text-faint">{health.length} contas ativas</span>
+                </>
+              );
+            })()}
+          </div>
+        )}
+
         {/* semáforo */}
         {health.length === 0 ? (
           <div className="card mt-4 border-dashed p-8 text-center text-sm text-faint">

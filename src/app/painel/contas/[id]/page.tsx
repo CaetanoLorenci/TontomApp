@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getScope } from "@/lib/auth";
 import { PanelNav } from "@/components/panel-nav";
-import { accountHealth, campaignBreakdown, type ManagedAccount } from "@/lib/gestor";
+import { accountHealth, campaignBreakdown, dailySeries, type ManagedAccount } from "@/lib/gestor";
 import { removeManagedAccount, setAccountAction, clearAccountAction, updateAccountSettings } from "../../actions";
 import { brl } from "@/lib/format";
 import { CostTrend } from "../trend";
@@ -20,6 +20,8 @@ const LEVEL_META = {
   green: { label: "rodando bem", color: "var(--color-st-vend)" },
 } as const;
 
+const brDayLabel = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
 export default async function ContaDetalhe({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { seesAll } = await getScope();
@@ -34,7 +36,11 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
   if (!data) notFound();
   const account = data as ManagedAccount;
 
-  const [h, campaigns] = await Promise.all([accountHealth(account), campaignBreakdown(account.act_id)]);
+  const [h, campaigns, daily] = await Promise.all([
+    accountHealth(account),
+    campaignBreakdown(account.act_id),
+    dailySeries(account.act_id, account.objective),
+  ]);
   const meta = LEVEL_META[h.level];
 
   const cpa = (spend: number, results: number) => (results > 0 ? spend / results : null);
@@ -112,6 +118,55 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
             </div>
           ))}
         </section>
+
+        {/* ritmo diário: a queda de entrega aparece na curva antes de aparecer no agregado */}
+        {daily.some((d) => d.spend > 0) && (
+          <section className="card mt-4 p-5">
+            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-faint">
+              Gasto por dia — últimos 14 dias
+            </h2>
+            {(() => {
+              const max = Math.max(...daily.map((d) => d.spend));
+              const W = 14 * 22; // 14 barras × (18 + 4 de respiro)
+              const H = 72;
+              return (
+                <svg
+                  viewBox={`0 0 ${W} ${H}`}
+                  className="mt-3 h-24 w-full"
+                  preserveAspectRatio="none"
+                  role="img"
+                  aria-label="Gasto diário dos últimos 14 dias"
+                >
+                  {daily.map((d, i) => {
+                    const hh = max > 0 ? Math.max((d.spend / max) * (H - 6), 2) : 2;
+                    const zero = d.spend === 0;
+                    return (
+                      <rect
+                        key={d.date}
+                        x={i * 22 + 2}
+                        y={H - hh}
+                        width={18}
+                        height={hh}
+                        rx={3}
+                        fill={zero ? "var(--color-line)" : "var(--color-signal)"}
+                        opacity={zero ? 0.6 : i === daily.length - 1 ? 1 : 0.75}
+                      >
+                        <title>
+                          {`${brDayLabel(d.date)} · ${brl.format(d.spend)}${d.results > 0 ? ` · ${d.results} resultado${d.results > 1 ? "s" : ""}` : ""}`}
+                        </title>
+                      </rect>
+                    );
+                  })}
+                </svg>
+              );
+            })()}
+            <div className="num mt-1.5 flex justify-between text-[10px] text-faint">
+              <span>{brDayLabel(daily[0].date)}</span>
+              <span>pico {brl.format(Math.max(...daily.map((d) => d.spend)))}</span>
+              <span>{brDayLabel(daily[daily.length - 1].date)} (ontem)</span>
+            </div>
+          </section>
+        )}
 
         {/* campanhas: o que puxa o custo (7d) */}
         <section className="card mt-4 p-5">
