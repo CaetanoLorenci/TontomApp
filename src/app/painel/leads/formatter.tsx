@@ -89,7 +89,9 @@ function toLeads(rows: string[][]): Lead[] {
         ].includes(k)
       )
         return;
-      lines.push(h, v); // pergunta numa linha, resposta na seguinte (formato do repasse)
+      // export do formulário traz a pergunta em snake_case — devolver legível
+      const pretty = h.includes("_") && !h.includes(" ") ? h.replace(/_+/g, " ").trim() : h;
+      lines.push(pretty.charAt(0).toUpperCase() + pretty.slice(1), v); // pergunta, resposta
     });
     if (nome) lines.push("Nome:", nome);
     if (email) lines.push("E-mail:", email);
