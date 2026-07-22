@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { sendPushToOrgs } from "@/lib/push";
 import { getAccountFinance } from "@/lib/meta-ads";
 import { allAccountsHealth, type ManagedAccount } from "@/lib/gestor";
+import { mondayDemands, urgentDemands } from "@/lib/monday";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,6 +53,15 @@ export async function GET(req: NextRequest) {
     const pendentes = accounts.filter((a) => a.next_action).length;
     if (pendentes > 0)
       lines.push(pendentes > 1 ? `📌 ${pendentes} próximas ações anotadas` : "📌 1 próxima ação anotada");
+
+    // demandas do Monday (SOMENTE LEITURA): abertas e urgentes/com prazo até hoje
+    const todayIso = new Date(now.getTime() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+    const urgent = urgentDemands(await mondayDemands(), todayIso);
+    for (const d of urgent.slice(0, 3)) {
+      const late = d.due != null && d.due < todayIso;
+      lines.push(`📋 ${d.name} (${d.group}${late ? " · ATRASADA" : d.due === todayIso ? " · hoje" : ""})`);
+    }
+    if (urgent.length > 3) lines.push(`📋 …e mais ${urgent.length - 3} no Monday`);
 
     pushes += await sendPushToOrgs(["amplia"], {
       title: `🚦 Semáforo: ${counts.red} agir · ${counts.yellow} de olho · ${counts.green} ok`,
