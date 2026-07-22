@@ -13,7 +13,7 @@ export type MondayDemand = {
 };
 
 export async function mondayDemands(): Promise<MondayDemand[]> {
-  const token = process.env.MONDAY_API_TOKEN;
+  const token = process.env.MONDAY_API_TOKEN?.trim(); // \r no fim quebraria o header
   if (!token) return [];
   try {
     const res = await fetch("https://api.monday.com/v2", {

@@ -8,8 +8,9 @@ const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const TOKEN_URI = "https://oauth2.googleapis.com/token";
 
 function creds(): { email: string; key: string } | null {
-  const email = process.env.GOOGLE_SA_EMAIL;
-  const key = process.env.GOOGLE_SA_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  // trim: env var cadastrada via pipe pode vir com \r\n no fim (quebrou o iss do JWT em prod)
+  const email = process.env.GOOGLE_SA_EMAIL?.trim();
+  const key = process.env.GOOGLE_SA_PRIVATE_KEY?.trim().replace(/\\n/g, "\n");
   if (!email || !key) return null;
   return { email, key };
 }

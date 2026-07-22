@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
     return new NextResponse("unauthorized", { status: 401 });
   }
-  const sheetId = process.env.SALDO_SHEET_ID;
+  const sheetId = process.env.SALDO_SHEET_ID?.trim();
   if (!sheetId) return NextResponse.json({ ok: false, error: "SALDO_SHEET_ID ausente" }, { status: 500 });
 
   const { data } = await supabaseAdmin()
