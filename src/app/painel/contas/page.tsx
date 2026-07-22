@@ -123,6 +123,21 @@ export default async function Contas() {
                           {cpaY != null && <> · {brl.format(cpaY)}/res</>}
                         </>
                       )}
+                      {/* pagamento: pré-pago mostra o saldo (acaba!), cartão mostra o em aberto */}
+                      {h.funding.kind === "prepago" && h.balanceValue != null && (
+                        <>
+                          {" "}· saldo{" "}
+                          <strong className={h.balanceValue < 50 ? "text-st-perd" : h.balanceValue < 150 ? "text-st-agen" : "text-snow"}>
+                            {brl.format(h.balanceValue)}
+                          </strong>
+                        </>
+                      )}
+                      {h.funding.kind === "cartao" && (
+                        <>
+                          {" "}· 💳 {h.funding.label}
+                          {h.funding.open != null && h.funding.open > 0 && <> · em aberto {brl.format(h.funding.open)}</>}
+                        </>
+                      )}
                     </p>
                   )}
 

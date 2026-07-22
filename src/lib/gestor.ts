@@ -36,6 +36,9 @@ export type AccountHealth = {
   status: number; // 1 = ativa
   currency: string;
   balanceValue: number | null; // saldo pré-pago (R$) se houver
+  // forma de pagamento: pré-pago (Pix/boleto, type 20) tem SALDO que acaba;
+  // cartão (type 1) não tem saldo — tem valor EM ABERTO que será cobrado
+  funding: { kind: "prepago" | "cartao" | null; label: string | null; open: number | null };
   yesterday: Insights;
   d7: Insights;
   d30: Insights;
@@ -217,6 +220,7 @@ export async function accountHealth(account: ManagedAccount): Promise<AccountHea
     status: 0,
     currency: "BRL",
     balanceValue: null,
+    funding: { kind: null, label: null, open: null },
     yesterday: { spend: 0, results: 0, resultLabel: null },
     d7: { spend: 0, results: 0, resultLabel: null },
     d30: { spend: 0, results: 0, resultLabel: null },
@@ -225,7 +229,7 @@ export async function accountHealth(account: ManagedAccount): Promise<AccountHea
   if (!token) return { ...base, ...judge(base) };
 
   const [info, yesterday, d7, d30, prev7] = await Promise.all([
-    graphGet(`act_${account.act_id}?fields=name,account_status,currency,funding_source_details`, token),
+    graphGet(`act_${account.act_id}?fields=name,account_status,currency,funding_source_details,balance`, token),
     insightsFor(account.act_id, "yesterday", token, account.objective),
     insightsFor(account.act_id, "last_7d", token, account.objective),
     insightsFor(account.act_id, "last_30d", token, account.objective),
@@ -237,8 +241,10 @@ export async function accountHealth(account: ManagedAccount): Promise<AccountHea
     return { ...failed, ...judge(failed) };
   }
 
-  const fundingText = (info.funding_source_details as { display_string?: string } | undefined)?.display_string ?? null;
-  const m = fundingText?.match(/([\d.]+,\d{2})/);
+  const fd = info.funding_source_details as { display_string?: string; type?: number } | undefined;
+  const fundingText = fd?.display_string ?? null;
+  const isCard = fd?.type === 1;
+  const m = !isCard ? fundingText?.match(/([\d.]+,\d{2})/) : null;
   const filled: Omit<AccountHealth, "level" | "reasons"> = {
     ...base,
     ok: true,
@@ -246,6 +252,11 @@ export async function accountHealth(account: ManagedAccount): Promise<AccountHea
     status: (info.account_status as number) ?? 0,
     currency: (info.currency as string) ?? "BRL",
     balanceValue: m ? Number(m[1].replace(/\./g, "").replace(",", ".")) : null,
+    funding: {
+      kind: isCard ? "cartao" : fd?.type === 20 ? "prepago" : null,
+      label: isCard ? fundingText : null, // ex.: "Mastercard *8051"
+      open: isCard && info.balance != null ? Number(info.balance) / 100 : null, // balance vem em centavos
+    },
     yesterday,
     d7,
     d30,

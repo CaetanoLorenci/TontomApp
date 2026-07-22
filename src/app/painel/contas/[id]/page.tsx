@@ -106,7 +106,19 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
         <p className="num mt-1 text-xs text-faint">
           act_{account.act_id}
           {h.accountName ? ` · ${h.accountName}` : ""} · status {h.status === 1 ? "ativa" : `⚠ ${h.status}`}
-          {h.balanceValue != null && <> · saldo <strong className="text-snow">{brl.format(h.balanceValue)}</strong></>}
+          {h.funding.kind === "prepago" && h.balanceValue != null && (
+            <>
+              {" "}· pré-pago (Pix/boleto) · saldo <strong className="text-snow">{brl.format(h.balanceValue)}</strong>
+            </>
+          )}
+          {h.funding.kind === "cartao" && (
+            <>
+              {" "}· 💳 {h.funding.label}
+              {h.funding.open != null && h.funding.open > 0 && (
+                <> · em aberto <strong className="text-snow">{brl.format(h.funding.open)}</strong></>
+              )}
+            </>
+          )}
         </p>
 
         {/* meta combinada com o cliente + alvo em texto — sempre à vista na hora de decidir */}
