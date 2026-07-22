@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   const { data: accts } = await sb
     .from("managed_accounts")
     .select(
-      "id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at, objective, report_metrics, client_goal, target_note",
+      "id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at, objective, report_metrics, client_goal, target_note, weekend_only, auto_recharge",
     )
     .eq("active", true);
   const accounts = (accts ?? []) as ManagedAccount[];

@@ -37,7 +37,7 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
   const sb = supabaseAdmin();
   const { data } = await sb
     .from("managed_accounts")
-    .select("id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at, objective, report_metrics, client_goal, target_note")
+    .select("id, act_id, client_name, monthly_budget, target_cpa, notes, active, next_action, next_action_at, objective, report_metrics, client_goal, target_note, weekend_only, auto_recharge")
     .eq("id", id)
     .maybeSingle();
   if (!data) notFound();
@@ -415,6 +415,28 @@ export default async function ContaDetalhe({ params }: { params: Promise<{ id: s
                   ))}
                 </div>
               </fieldset>
+            </div>
+            <div className="flex flex-wrap gap-x-5 gap-y-1.5 rounded-xl border border-line px-3 py-2 text-sm">
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  name="weekendOnly"
+                  defaultChecked={account.weekend_only}
+                  className="accent-[var(--color-signal)]"
+                />
+                Roda só fim de semana
+                <span className="text-[10px] text-faint">(saldo/gasto zerado em dia útil = normal)</span>
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  name="autoRecharge"
+                  defaultChecked={account.auto_recharge}
+                  className="accent-[var(--color-signal)]"
+                />
+                Recarga automática no cartão
+                <span className="text-[10px] text-faint">(saldo baixo não trava — sem alerta)</span>
+              </label>
             </div>
             <label className="block text-xs text-mist">
               Notas da conta (particularidades, combinados, aprendizados)

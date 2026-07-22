@@ -24,6 +24,8 @@ export type ManagedAccount = {
   report_metrics: string[]; // extras no relatório: 'impressoes' | 'cliques' | 'ctr' | 'cpm'
   client_goal: string | null; // meta combinada com o cliente, texto livre
   target_note: string | null; // custo-alvo em texto (ex.: "ROAS: +10x / ideal = 15x") quando não é um R$ numérico
+  weekend_only: boolean; // roda só fim de semana (saldo/gasto zerado em dia útil = normal)
+  auto_recharge: boolean; // pré-pago com recarga automática no cartão (saldo baixo não trava)
 };
 
 type Insights = { spend: number; results: number; resultLabel: string | null };
@@ -181,11 +183,26 @@ function judge(h: Omit<AccountHealth, "level" | "reasons">): { level: AccountHea
 
   if (!h.ok) return { level: "red", reasons: [h.error ?? "não consegui ler a conta (acesso/token)"] };
   if (h.status !== 1) red.push("conta desativada/restrita no Meta");
-  if (h.balanceValue != null && h.balanceValue < 50) red.push(`saldo quase no fim (R$ ${h.balanceValue.toFixed(2)})`);
-  else if (h.balanceValue != null && h.balanceValue < 150) yellow.push(`saldo baixo (R$ ${h.balanceValue.toFixed(2)})`);
+
+  // dia da semana em Brasília: 0=dom … 6=sáb (regras de conta de fim de semana)
+  const dowBR = new Date(Date.now() - 3 * 3600 * 1000).getUTCDay();
+
+  // saldo: recarga automática no cartão nunca trava → sem alerta de saldo;
+  // conta de fds com saldo no fim em seg-qua = normal (vira aviso), de qui em diante cobra recarga
+  if (!h.account.auto_recharge) {
+    const softWeekend = h.account.weekend_only && dowBR >= 1 && dowBR <= 3;
+    if (h.balanceValue != null && h.balanceValue < 50) {
+      if (softWeekend) yellow.push(`saldo no fim (R$ ${h.balanceValue.toFixed(2)}) — roda só no fds, recarregar até quinta`);
+      else red.push(`saldo quase no fim (R$ ${h.balanceValue.toFixed(2)})`);
+    } else if (h.balanceValue != null && h.balanceValue < 150 && !softWeekend) {
+      yellow.push(`saldo baixo (R$ ${h.balanceValue.toFixed(2)})`);
+    }
+  }
 
   // conta que deveria rodar e gastou ZERO ontem = parada (rejeição, verba, pausa…)
-  if ((budget ?? 0) > 0 && h.yesterday.spend === 0) red.push("gastou R$ 0 ontem — conta parada?");
+  // conta de fds: só alerta quando "ontem" era sáb/dom (hoje dom ou seg)
+  const zeroSpendMatters = h.account.weekend_only ? dowBR === 0 || dowBR === 1 : true;
+  if ((budget ?? 0) > 0 && h.yesterday.spend === 0 && zeroSpendMatters) red.push("gastou R$ 0 ontem — conta parada?");
 
   // custo por resultado vs alvo (se houver) ou vs a média da própria conta em 30d
   const cy = cpa(h.yesterday);

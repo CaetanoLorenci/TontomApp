@@ -354,7 +354,11 @@ export async function updateAccountSettings(formData: FormData) {
   // custo-alvo aceita R$ OU anotação livre ("ROAS: +10x / ideal = 15x"):
   // número → semáforo compara contra ele; texto → vira target_note e o semáforo usa a média 30d
   const targetTyped = String(formData.get("targetCpa") ?? "").trim().slice(0, 200);
-  const targetNum = targetTyped ? Number(targetTyped.replace(/^R\$\s*/i, "").replace(/\./g, "").replace(",", ".")) : null;
+  // "10.15" é decimal com ponto (vira 10,15), não milhar — "1.015,00" continua sendo mil e quinze
+  const cleaned = targetTyped.replace(/^R\$\s*/i, "");
+  const targetNum = targetTyped
+    ? Number(/^\d+\.\d{1,2}$/.test(cleaned) ? cleaned : cleaned.replace(/\./g, "").replace(",", "."))
+    : null;
   const targetIsNumber = targetNum != null && Number.isFinite(targetNum);
   const clientGoal = String(formData.get("clientGoal") ?? "").trim().slice(0, 300) || null;
   const objectiveRaw = String(formData.get("objective") ?? "auto");
@@ -373,6 +377,8 @@ export async function updateAccountSettings(formData: FormData) {
       notes,
       objective,
       report_metrics: metrics,
+      weekend_only: formData.get("weekendOnly") === "on",
+      auto_recharge: formData.get("autoRecharge") === "on",
     })
     .eq("id", id);
   revalidatePath("/painel/contas");
