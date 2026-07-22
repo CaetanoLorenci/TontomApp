@@ -195,8 +195,8 @@ export default async function Painel({
   searchParams: Promise<{ p?: string; q?: string; stage?: string; crm?: string }>;
 }) {
   const { p, q, stage, crm } = await searchParams;
-  // modo gestor: a casa é a dash de contas; o CRM fica em stand-by (acessível via ?crm=1)
-  if (GESTOR_MODE && crm !== "1") redirect("/painel/contas");
+  // modo gestor: a casa é a visão de campanhas multi-conta; CRM em stand-by (?crm=1)
+  if (GESTOR_MODE && crm !== "1") redirect("/painel/campanhas");
   const period = PERIODS[p ?? "30d"] ? (p ?? "30d") : "30d";
   const since = periodStart(PERIODS[period].days);
   const query = (q ?? "").trim();

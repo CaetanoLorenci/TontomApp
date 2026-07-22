@@ -10,7 +10,7 @@ import { GESTOR_MODE, GESTOR_KEYS } from "@/lib/hub-mode";
 //  · celular: header enxuto (logo + ações da tela + sino) e navegação na BARRA INFERIOR
 //    fixa (BottomNav — 4 destinos no polegar + "Mais"), padrão de app.
 //  · desktop (sm+): header com a linha de abas de sempre; barra inferior some.
-type Key = "painel" | "pipeline" | "agenda" | "anuncios" | "relatorios" | "criativos" | "projetos" | "central" | "clientes" | "acesso" | "contas" | "relatorio" | "leads";
+type Key = "painel" | "pipeline" | "agenda" | "anuncios" | "relatorios" | "criativos" | "projetos" | "central" | "clientes" | "acesso" | "contas" | "relatorio" | "leads" | "campanhas";
 
 type Item = { key: Key; href: string; label: string; Icon: ComponentType<{ size?: number; className?: string }> | null };
 
@@ -26,6 +26,7 @@ const BASE: Item[] = [
 ];
 
 const ADMIN: Item[] = [
+  { key: "campanhas", href: "/painel/campanhas", label: "Campanhas", Icon: IconBroadcast },
   { key: "contas", href: "/painel/contas", label: "Contas", Icon: IconTarget },
   { key: "relatorio", href: "/painel/relatorio", label: "Relatório", Icon: IconTrend },
   { key: "leads", href: "/painel/leads", label: "Leads", Icon: IconFunnel },

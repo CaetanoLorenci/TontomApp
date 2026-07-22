@@ -378,6 +378,78 @@ export async function campaignBreakdown(
     .sort((a, b) => b.spend - a.spend);
 }
 
+// ── Overview de campanhas (home "Gerenciador multi-conta"): status + ontem + 7d ──
+// Curadoria: só o que roda (ACTIVE) ou gastou nos 7d; ordena problema primeiro
+// (gastando sem resultado), depois por gasto. Médias escondem extremo — por isso
+// a home mostra a QUEBRA, não o consolidado.
+export type CampaignOverview = {
+  id: string;
+  name: string;
+  active: boolean; // effective_status === ACTIVE
+  ySpend: number;
+  yResults: number;
+  spend7: number;
+  results7: number;
+  resultLabel: string | null;
+  noResult: boolean; // gastou nos 7d e não trouxe nada — bandeira vermelha
+};
+
+export async function accountCampaignsOverview(actId: string, objective = "auto"): Promise<CampaignOverview[]> {
+  const token = adsToken();
+  if (!token) return [];
+  type InsRow = { campaign_id?: string; campaign_name?: string; spend?: string; actions?: { action_type: string; value: string }[] };
+  const insFields = "level=campaign&fields=campaign_id,campaign_name,spend,actions&limit=100";
+  const [statusJson, d7Json, yJson] = await Promise.all([
+    graphGet(`act_${actId}/campaigns?fields=name,effective_status&limit=100`, token),
+    graphGet(`act_${actId}/insights?${insFields}&date_preset=last_7d`, token),
+    graphGet(`act_${actId}/insights?${insFields}&date_preset=yesterday`, token),
+  ]);
+  const statuses = new Map<string, { name: string; status: string }>();
+  for (const c of (statusJson?.data as { id: string; name: string; effective_status?: string }[] | undefined) ?? []) {
+    statuses.set(c.id, { name: c.name, status: c.effective_status ?? "UNKNOWN" });
+  }
+  const byId = new Map<string, CampaignOverview>();
+  const ensure = (id: string, name: string): CampaignOverview => {
+    let c = byId.get(id);
+    if (!c) {
+      c = {
+        id,
+        name: statuses.get(id)?.name ?? name,
+        active: statuses.get(id)?.status === "ACTIVE",
+        ySpend: 0,
+        yResults: 0,
+        spend7: 0,
+        results7: 0,
+        resultLabel: null,
+        noResult: false,
+      };
+      byId.set(id, c);
+    }
+    return c;
+  };
+  for (const r of ((d7Json?.data as InsRow[] | undefined) ?? [])) {
+    if (!r.campaign_id) continue;
+    const c = ensure(r.campaign_id, r.campaign_name ?? "(sem nome)");
+    const { results, resultLabel } = pickResults(r.actions, objective);
+    c.spend7 = Number(r.spend || 0);
+    c.results7 = results;
+    c.resultLabel = resultLabel;
+  }
+  for (const r of ((yJson?.data as InsRow[] | undefined) ?? [])) {
+    if (!r.campaign_id) continue;
+    const c = ensure(r.campaign_id, r.campaign_name ?? "(sem nome)");
+    const { results } = pickResults(r.actions, objective);
+    c.ySpend = Number(r.spend || 0);
+    c.yResults = results;
+  }
+  // campanhas ativas sem NENHUMA linha de insight (acabaram de subir) também aparecem
+  for (const [id, s] of statuses) if (s.status === "ACTIVE") ensure(id, s.name);
+
+  const list = [...byId.values()].filter((c) => c.active || c.spend7 > 0);
+  for (const c of list) c.noResult = c.spend7 > 0 && c.results7 === 0;
+  return list.sort((a, b) => Number(b.noResult) - Number(a.noResult) || b.spend7 - a.spend7);
+}
+
 // ── Relatório formatado pro WhatsApp (copiar/compartilhar) ──
 // Texto pronto com *negrito*/_itálico_ do WhatsApp: 7d vs semana anterior,
 // 30d, top campanhas e a leitura interpretada. Economiza a hora do relatório.
