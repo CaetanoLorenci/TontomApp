@@ -7,7 +7,7 @@
 export const GESTOR_MODE = true;
 
 // módulos visíveis no modo gestor — vamos ampliando aos poucos conforme a rotina pedir
-export const GESTOR_KEYS = ["contas", "relatorio"] as const;
+export const GESTOR_KEYS = ["contas", "relatorio", "leads"] as const;
 
 // Marca do produto no modo gestor (micro-SaaS futuro). Neutra de propósito:
 // nem Amplia nem Optimize — identidade visual por workspace vem depois (logo/cor).
