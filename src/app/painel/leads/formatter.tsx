@@ -8,11 +8,14 @@ import { CopyShare } from "@/components/copy-share";
    card no formato de repasse pro cliente: perguntas do formulário na ordem,
    depois Nome / E-mail / Telefone. Tudo client-side — nenhum lead sai do navegador. */
 
-// colunas técnicas do export do Meta que NÃO são pergunta de formulário
+// colunas técnicas que NÃO são pergunta de formulário — cobre o CSV do formulário
+// (inglês) e o export da Central de Leads (português: Criado em/Fonte/Estágio…)
 const META_COLS = new Set([
   "id", "lead_id", "created_time", "data_de_criacao", "ad_id", "ad_name", "adset_id", "adset_name",
   "campaign_id", "campaign_name", "form_id", "form_name", "is_organic", "platform", "retailer_item_id",
   "lead_status", "vehicle", "post_id", "page_id", "page_name", "partner_name", "channel",
+  "criado_em", "fonte", "formulario", "canal", "estagio", "proprietario", "rotulos", "origem",
+  "anuncio", "conjunto_de_anuncios", "campanha", "etiquetas", "status", "atribuido_a",
 ]);
 
 const norm = (s: string) =>
@@ -61,20 +64,31 @@ function toLeads(rows: string[][]): Lead[] {
     };
     const nome = get("full_name", "nome", "nome_completo", "name");
     const email = get("email", "e_mail");
-    // Meta exporta telefone como "p:+5562984026185" — repassar limpo, como no print
-    const tel = get("phone_number", "telefone", "phone")
+    // Meta exporta telefone como "p:+5562984026185" — repassar limpo, como no print.
+    // Central de Leads tem até 3 colunas de telefone; usa a primeira preenchida.
+    const tel = (
+      get("phone_number", "telefone", "phone") ||
+      get("numero_de_telefone") ||
+      get("numero_do_whatsapp")
+    )
       .replace(/^p:/i, "")
       .replace(/^\+?55/, "")
       .replace(/[^\d]/g, "");
-    const when = get("created_time", "data_de_criacao") || null;
-    const campaign = get("campaign_name") || null;
+    const when = get("created_time", "data_de_criacao", "criado_em") || null;
+    const campaign = get("campaign_name", "campanha") || get("form_name", "formulario") || null;
 
     const lines: string[] = [];
     headers.forEach((h, i) => {
       const k = keys[i];
       const v = (r[i] ?? "").trim();
       if (!v || META_COLS.has(k)) return;
-      if (["full_name", "nome", "nome_completo", "name", "email", "e_mail", "phone_number", "telefone", "phone"].includes(k)) return;
+      if (
+        [
+          "full_name", "nome", "nome_completo", "name", "email", "e_mail",
+          "phone_number", "telefone", "phone", "numero_de_telefone", "numero_do_whatsapp",
+        ].includes(k)
+      )
+        return;
       lines.push(h, v); // pergunta numa linha, resposta na seguinte (formato do repasse)
     });
     if (nome) lines.push("Nome:", nome);
@@ -123,7 +137,7 @@ export function LeadsFormatter() {
               <section key={i} className="card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <span className="num text-[10px] text-faint">
-                    {l.when ? l.when.replace("T", " ").slice(0, 16) : `lead ${i + 1}`}
+                    {l.when ? (l.when.includes("T") ? l.when.replace("T", " ").slice(0, 16) : l.when) : `lead ${i + 1}`}
                     {l.campaign ? ` · ${l.campaign}` : ""}
                   </span>
                   <CopyShare text={l.text} />
